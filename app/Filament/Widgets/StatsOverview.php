@@ -49,7 +49,7 @@ class StatsOverview extends BaseWidget
             ->latest()
             ->first();
 
-        $latestOrderDescription = 'سفارش خرید پلنی ثبت نشده';
+        $latestOrderDescription = 'بدون سفارش';
         if ($latestOrder) {
 
             $userName = $latestOrder->user?->name ?? 'کاربر حذف شده';
@@ -61,17 +61,17 @@ class StatsOverview extends BaseWidget
 
         return [
             Stat::make('درآمد کل', number_format($totalRevenue) . ' تومان')
-                ->description('مجموع فروش پلن‌ها از ابتدا')
+                ->description('مجموع فروش ')
                 ->descriptionIcon('heroicon-m-arrow-trending-up')
                 ->color('success'),
 
             Stat::make('درآمد ماه جاری', number_format($currentMonthRevenue) . ' تومان')
-                ->description('فروش پلن‌ها در ماه جاری')
+                ->description('فروش ماه جاری')
                 ->descriptionIcon('heroicon-m-calendar-days')
                 ->color('success'),
 
             Stat::make('تعداد کل کاربران', $totalUsers)
-                ->description('تعداد کل کاربران ثبت‌نام شده')
+                ->description('تعداد کل کاربران')
                 ->descriptionIcon('heroicon-m-users')
                 ->color('info'),
 
