@@ -11,6 +11,7 @@ class TicketStatsOverview extends BaseWidget
 {
 
     protected static ?int $sort = 2;
+    protected int|string|array $columnSpan = 12;
 
     protected function getStats(): array
     {

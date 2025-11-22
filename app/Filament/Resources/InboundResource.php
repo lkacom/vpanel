@@ -20,10 +20,11 @@ class InboundResource extends Resource
     protected static ?string $model = Inbound::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-arrows-right-left';
-    protected static ?string $navigationLabel = 'اینباندها (سنایی/X-UI)';
+    protected static ?string $navigationLabel = 'تنظیمات ورودی ها(Inbounds)';
     protected static ?string $modelLabel = 'اینباند';
-    protected static ?string $pluralModelLabel = 'اینباندها';
-    protected static ?string $navigationGroup = 'مدیریت پنل';
+
+    protected static ?string $pluralModelLabel = 'ورودی ها';
+    protected static ?string $navigationGroup = 'تنظیمات';
 
     public static function form(Form $form): Form
     {
@@ -39,7 +40,7 @@ class InboundResource extends Resource
                     ->required()
                     ->json() // ولیدیشن برای اطمینان از صحت ساختار JSON
                     ->rows(20)
-                    ->helperText('اطلاعات کامل اینباند را از پنل سنایی کپی کنید یا از دکمه "Sync از X-UI" استفاده کنید.')
+                    ->helperText('اطلاعات کامل اینباند را از پنل سنایی کپی کنید یا از دکمه "همگام سازی" استفاده کنید.')
 
 
                     ->afterStateHydrated(function (Forms\Components\Textarea $component, $state) {
@@ -107,12 +108,12 @@ class InboundResource extends Resource
             ])
             ->headerActions([
                 Action::make('syncFromXUI')
-                    ->label('Sync از X-UI')
+                    ->label('همگام سازی')
                     ->icon('heroicon-o-arrow-path')
                     ->color('primary')
                     ->requiresConfirmation()
-                    ->modalHeading('Sync اینباندها از X-UI')
-                    ->modalDescription('این عمل تمام اینباندها را از پنل X-UI دریافت و ذخیره میکند. آیا ادامه میدهید؟')
+                    ->modalHeading('دریافت از پنل v2Ray')
+                    ->modalDescription('در صورت پیکربندی صحیح این عمل تمام ورودی ها (Inbounds) را از پنل V2Ray شما دریافت خواهد کرد. آیا ادامه میدهید؟')
                     ->action(function () {
                         try {
                             $settings = \App\Models\Setting::all()->pluck('value', 'key');

@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\PlanResource\Pages;
 use App\Filament\Resources\PlanResource\RelationManagers;
+use Filament\Resources\RelationManagers\RelationManager;
 use App\Models\Plan;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -19,18 +20,18 @@ class PlanResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
 
-    protected static ?string $navigationGroup = 'مدیریت پلن‌ها';
+    protected static ?string $navigationGroup = 'مدیریت محصولات ';
 
-    protected static ?string $navigationLabel = 'پلن‌های سرویس';
-    protected static ?string $pluralModelLabel = 'پلن‌های سرویس';
-    protected static ?string $modelLabel = 'پلن سرویس';
+    protected static ?string $navigationLabel = ' پکیج های VPN';
+    protected static ?string $pluralModelLabel = 'پکیج های VPN';
+    protected static ?string $modelLabel = 'پکیج جدید';
 
     public static function form(Form $form): Form
     {
         return $form
             ->schema([
                 Forms\Components\TextInput::make('name')
-                    ->label('نام پلن')
+                    ->label('نام سرویس')
                     ->required(),
                 Forms\Components\TextInput::make('price')
                     ->label('قیمت')
@@ -52,14 +53,17 @@ class PlanResource extends Resource
                     ->default(30)
                     ->helperText('حجم سرویس را به گیگابایت وارد کنید.'),
 
-                Forms\Components\TextInput::make('duration_days')
-                    ->label('مدت زمان (روز)')
-                    ->numeric()
+                Forms\Components\Select::make('duration_days')
+                    ->label('مدت اعتبار')
+                    ->options([
+                        30 => '۳۰ روز (۱ ماهه)',
+                        90 => '۹۰ روز (۳ ماهه)',
+                        365 => '۳۶۵ روز (۱ ساله)',
+                    ])
                     ->required()
                     ->default(30)
-                    ->helperText('مثال: 30 = ۱ ماهه، 90 = ۳ ماهه، 365 = ۱ ساله')
-                    ->rules(['min:1']),
-                //========================================================
+                    ->native(false) ,
+        //========================================================
 
                 Forms\Components\Toggle::make('is_popular')
                     ->label('پلن محبوب است؟')

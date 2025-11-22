@@ -27,8 +27,10 @@ class ThemeSettings extends Page implements HasForms
 
     protected static ?string $navigationIcon = 'heroicon-o-cog-6-tooth';
     protected static string $view = 'filament.pages.theme-settings';
-    protected static ?string $navigationLabel = 'تنظیمات سایت';
+    protected static ?string $navigationLabel = 'پیکربندی اصلی';
     protected static ?string $title = 'تنظیمات و محتوای سایت';
+    protected static ?string $navigationGroup = 'تنظیمات';
+
 
     public ?array $data = [];
 
@@ -163,17 +165,17 @@ class ThemeSettings extends Page implements HasForms
                     ]),
 
                     Tabs\Tab::make('تنظیمات پنل V2Ray')->icon('heroicon-o-server-stack')->schema([
-                        Radio::make('panel_type')->label('نوع پنل')->options(['marzban' => 'مرزبان', 'xui' => 'سنایی / X-UI'])->live()->required(),
+                        Radio::make('panel_type')->label('نوع پنل')->options(['marzban' => 'مرزبان', 'xui' => 'سنایی / TX-UI'])->live()->required(),
                         Section::make('تنظیمات پنل مرزبان')->visible(fn (Get $get) => $get('panel_type') === 'marzban')->schema([
                             TextInput::make('marzban_host')->label('آدرس پنل مرزبان')->required(),
                             TextInput::make('marzban_sudo_username')->label('نام کاربری ادمین')->required(),
                             TextInput::make('marzban_sudo_password')->label('رمز عبور ادمین')->password()->required(),
                             TextInput::make('marzban_node_hostname')->label('آدرس دامنه/سرور برای کانفیگ')
                         ]),
-                        Section::make('تنظیمات پنل سنایی / X-UI')
+                        Section::make('تنظیمات پنل  X-UI')
                             ->visible(fn(Get $get) => $get('panel_type') === 'xui')
                             ->schema([
-                                TextInput::make('xui_host')->label('آدرس کامل پنل سنایی')
+                                TextInput::make('xui_host')->label('آدرس کامل پنل ')
                                     ->required(fn(Get $get): bool => $get('panel_type') === 'xui'),
                                 TextInput::make('xui_user')->label('نام کاربری')
                                     ->required(fn(Get $get): bool => $get('panel_type') === 'xui'),
@@ -182,7 +184,7 @@ class ThemeSettings extends Page implements HasForms
 
                                 // 🔥 فیکس کامل:
                                 Select::make('xui_default_inbound_id')
-                                    ->label('اینباند پیش‌فرض')
+                                    ->label('ورودی پیش‌فرض')
                                     ->options(function () {
                                         // 🔥 دیباگ: لاگ بزن ببین چی داریم
                                         $inbounds = \App\Models\Inbound::query()
@@ -238,7 +240,7 @@ class ThemeSettings extends Page implements HasForms
                                     ->preload()
                                     ->allowHtml()
                                     ->placeholder('یک اینباند انتخاب کنید')
-                                    ->helperText('اگر لیست خالی است، ابتدا از بخش "اینباندها" Sync را بزنید و صفحه را رفرش کنید.'),
+                                    ->helperText('اگر لیست خالی است، ابتدا از بخش "ورودی ها" دکمه همگام سازی را بزنید و صفحه را رفرش کنید.'),
 
                                 Radio::make('xui_link_type')->label('نوع لینک تحویلی')->options(['single' => 'لینک تکی', 'subscription' => 'لینک سابسکریپشن'])->default('single')
                                     ->required(fn(Get $get): bool => $get('panel_type') === 'xui'),

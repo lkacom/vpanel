@@ -32,10 +32,14 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->login()
+            ->darkMode()
+            ->brandLogo('/images/default-logo.png')
+            ->brandLogoHeight('3rem')
+            ->favicon(asset('favicon.png'))
             ->colors([
-                'primary' => '#7C3AED',
-                'gray' => Color::Slate,
-                'danger' => Color::Rose,
+                'primary' => Color::Red,
+                'gray' => Color::Sky,
+                'danger' => Color::Red,
                 'info' => Color::Sky,
                 'success' => Color::Emerald,
                 'warning' => Color::Amber,
@@ -54,7 +58,6 @@ class AdminPanelProvider extends PanelProvider
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->widgets([
 
-                Widgets\AccountWidget::class,
                 VpnMarketInfoWidget::class,
 
 

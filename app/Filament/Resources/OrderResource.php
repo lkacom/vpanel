@@ -36,7 +36,7 @@ class OrderResource extends Resource
     protected static ?string $navigationLabel = 'سفارشات';
     protected static ?string $modelLabel = 'سفارش';
     protected static ?string $pluralModelLabel = 'سفارشات';
-    protected static ?string $navigationGroup = 'مدیریت سفارشات';
+    protected static ?string $navigationGroup = 'مدیریت محصولات ';
 
     public static function form(Form $form): Form
     {
@@ -55,7 +55,7 @@ class OrderResource extends Resource
             ->columns([
                 ImageColumn::make('card_payment_receipt')->label('رسید')->disk('public')->toggleable()->size(60)->circular()->url(fn (Order $record): ?string => $record->card_payment_receipt ? Storage::disk('public')->url($record->card_payment_receipt) : null)->openUrlInNewTab(),
                 Tables\Columns\TextColumn::make('user.name')->label('کاربر')->searchable()->sortable(),
-                Tables\Columns\TextColumn::make('plan.name')->label('پلن / آیتم')->default(fn (Order $record): string => $record->plan_id ? $record->plan->name : "شارژ کیف پول")->description(function (Order $record): string {
+                Tables\Columns\TextColumn::make('plan.name')->label(' عنوان')->default(fn (Order $record): string => $record->plan_id ? $record->plan->name : "شارژ کیف پول")->description(function (Order $record): string {
                     if ($record->renews_order_id) return " (تمدید سفارش #" . $record->renews_order_id . ")";
                     if (!$record->plan_id) return number_format($record->amount) . ' تومان';
                     return '';
@@ -259,7 +259,6 @@ class OrderResource extends Resource
                             }
                         });
                     }),
-                Tables\Actions\DeleteAction::make(),
 
 
 
@@ -267,7 +266,8 @@ class OrderResource extends Resource
 
 
 
-                Tables\Actions\DeleteAction::make(),
+
+
 
             ])
             ->bulkActions([Tables\Actions\BulkActionGroup::make([Tables\Actions\DeleteBulkAction::make()])]);

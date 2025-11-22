@@ -12,6 +12,7 @@ class StatsOverview extends BaseWidget
 {
 
     protected static ?string $pollingInterval = '300s';
+    protected int|string|array $columnSpan = 12;
 
     protected function getStats(): array
     {
@@ -49,13 +50,7 @@ class StatsOverview extends BaseWidget
             ->latest()
             ->first();
 
-        $latestOrderDescription = 'بدون سفارش';
-        if ($latestOrder) {
-
-            $userName = $latestOrder->user?->name ?? 'کاربر حذف شده';
-            $planName = $latestOrder->plan?->name ?? 'پلن حذف شده';
-            $latestOrderDescription = 'آخرین: ' . $userName . ' | ' . $planName;
-        }
+        $latestOrderDescription = 'مجموع سفارشات موفق';
 
         // --- نمایش در کارت‌ها ---
 
@@ -68,14 +63,14 @@ class StatsOverview extends BaseWidget
             Stat::make('درآمد ماه جاری', number_format($currentMonthRevenue) . ' تومان')
                 ->description('فروش ماه جاری')
                 ->descriptionIcon('heroicon-m-calendar-days')
-                ->color('success'),
+                ->color('danger'),
 
             Stat::make('تعداد کل کاربران', $totalUsers)
                 ->description('تعداد کل کاربران')
                 ->descriptionIcon('heroicon-m-users')
-                ->color('info'),
+                ->color('warning'),
 
-            Stat::make('سفارشات موفق کل', $totalPaidOrders)
+            Stat::make('تعداد سفارشات', $totalPaidOrders)
                 ->description($latestOrderDescription)
                 ->descriptionIcon('heroicon-m-shopping-cart')
                 ->color('info'),

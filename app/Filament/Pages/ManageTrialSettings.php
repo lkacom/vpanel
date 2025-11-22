@@ -16,10 +16,11 @@ class ManageTrialSettings extends Page implements HasForms
 {
     use InteractsWithForms;
 
-    protected static ?string $navigationGroup = 'مدیریت کاربران';
+    protected static ?string $navigationGroup = 'تنظیمات';
     protected static ?string $navigationIcon = 'heroicon-o-sparkles';
-    protected static ?string $navigationLabel = 'تنظیمات اکانت تست';
+    protected static ?string $navigationLabel = 'فعالسازی اکانت تست';
     protected static string $view = 'filament.pages.manage-trial-settings';
+    protected static ?int $navigationSort = 3;
 
 
     protected static ?string $title = 'مدیریت تنظیمات اکانت تست';
