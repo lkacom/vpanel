@@ -27,7 +27,7 @@ class VpnSettings extends Page implements HasForms
 
     protected static ?string $navigationIcon = 'heroicon-o-key';
     protected static string $view = 'filament.pages.vpn-settings';
-    protected static ?string $navigationLabel = 'تنظیمات پنل VPN';
+    protected static ?string $navigationLabel = 'تنظیمات پنل V2Ray';
     protected static ?string $title = 'تنظیمات اولیه پنل V2Ray';
     protected static ?string $navigationGroup = 'تنظیمات';
 
@@ -81,6 +81,7 @@ class VpnSettings extends Page implements HasForms
                                     ->required(fn(Get $get): bool => $get('panel_type') === 'xui'),
                                 TextInput::make('xui_pass')->label('رمز عبور')->password()
                                     ->required(fn(Get $get): bool => $get('panel_type') === 'xui'),
+
 
                                 // 🔥 فیکس کامل:
                                 Select::make('xui_default_inbound_id')

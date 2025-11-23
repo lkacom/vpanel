@@ -19,14 +19,15 @@ class OrdersChart extends ChartWidget
             $date = now()->subDays($i)->toDateString();
             $labels[] = $date;
 
-            $count = Order::whereDate('updated_at', $date)->count();
+            $count = Order::whereDate('updated_at', $date)->where('status', 'paid')->count();
+
             $data[] = $count;
         }
 
         return [
             'datasets' => [
                 [
-                    'label' => 'سفارشات ۳۰ روز گذشته',
+                    'label' => 'تعداد سفارش',
                     'data' => $data,
                 ],
             ],

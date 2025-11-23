@@ -20,8 +20,8 @@ class PlanResource extends Resource
 
     protected static ?string $navigationGroup = 'مدیریت محصولات ';
 
-    protected static ?string $navigationLabel = ' پکیج های VPN';
-    protected static ?string $pluralModelLabel = 'پکیج های VPN';
+    protected static ?string $navigationLabel = ' پکیج های فروش';
+    protected static ?string $pluralModelLabel = 'پکیج های فروش';
     protected static ?string $modelLabel = 'پکیج جدید';
 
     public static function form(Form $form): Form

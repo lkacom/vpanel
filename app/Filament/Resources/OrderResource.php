@@ -142,7 +142,7 @@ class OrderResource extends Resource
                                 }
                             } elseif ($panelType === 'xui') {
                                 if ($isRenewal) {
-                                    Notification::make()->title('خطا')->body('تمدید خودکار برای پنل سنایی هنوز پیاده‌سازی نشده است.')->danger()->send();
+                                    Notification::make()->title('خطا')->body('تمدید خودکار برای پنل X-UI هنوز پیاده‌سازی نشده است.')->danger()->send();
                                     return;
                                 }
                                 $xuiService = new XUIService($settings->get('xui_host'), $settings->get('xui_user'), $settings->get('xui_pass'));

@@ -43,7 +43,7 @@ class StatsOverview extends BaseWidget
         $totalPaidOrders = Order::where('status', 'paid')->count();
 
 
-        $totalUsers = User::count();
+        $totalUsers = Order::where('status', 'pending')->count();
 
 
         $latestOrder = Order::where('status', 'paid')
@@ -52,7 +52,6 @@ class StatsOverview extends BaseWidget
             ->latest()
             ->first();
 
-        $latestOrderDescription = 'مجموع سفارشات موفق';
 
         // --- نمایش در کارت‌ها ---
 
@@ -67,14 +66,14 @@ class StatsOverview extends BaseWidget
                 ->descriptionIcon('heroicon-m-calendar-days')
                 ->color(Color::Lime),
 
-            Stat::make('تعداد کل کاربران', $totalUsers)
-                ->description('تعداد کل کاربران')
-                ->descriptionIcon('heroicon-m-users')
+            Stat::make('سفارشات معلق', $totalUsers)
+                ->description('سفارشات غیرفعال')
+                ->descriptionIcon('heroicon-m-x-circle')
                 ->color('warning'),
 
-            Stat::make('تعداد سفارشات', $totalPaidOrders)
-                ->description($latestOrderDescription)
-                ->descriptionIcon('heroicon-m-shopping-cart')
+            Stat::make('سفارشات موفق', $totalPaidOrders)
+                ->description('مجموع سفارشات تحویلی')
+                ->descriptionIcon('heroicon-m-shield-check')
                 ->color(Color::Purple),
         ];
     }
