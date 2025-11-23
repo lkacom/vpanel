@@ -3,6 +3,7 @@
 
 namespace App\Providers\Filament;
 use App\Filament\Widgets\VpnMarketInfoWidget;
+use Filament\Navigation\NavigationGroup;
 use Filament\Widgets\AccountWidget;
 use Filament\FontProviders\LocalFontProvider;
 use Filament\Http\Middleware\Authenticate;
