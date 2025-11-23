@@ -29,6 +29,11 @@ class UserResource extends Resource
     protected static ?string $navigationLabel = 'کاربران سایت';
     protected static ?string $pluralModelLabel = 'کاربران سایت';
     protected static ?string $modelLabel = 'کاربر';
+    public static function getNavigationBadge(): ?string
+    {
+        return static::$model::count();
+    }
+    protected static ?string $navigationBadgeTooltip = 'تعداد کاربران';
 
     public static function form(Form $form): Form
     {
@@ -62,7 +67,7 @@ class UserResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('name')->label('نام')->searchable(),
                 Tables\Columns\TextColumn::make('email')->label('ایمیل')->searchable(),
-                Tables\Columns\IconColumn::make('is_admin')->label('ادمین')->boolean(),
+                Tables\Columns\IconColumn::make('is_admin')->label('ادمین')->boolean()->icon('heroicon-o-users')->searchable(),
                 Tables\Columns\TextColumn::make('created_at')->label('تاریخ ثبت‌نام')->dateTime('Y-m-d')->sortable(),
             ])
             ->filters([
