@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/arvinvahed/VPNMarket/main/github/github/logo.png" width="250" alt="VPanel Logo">
+  <img src="https://raw.githubusercontent.com/lkacom/vpanel/main/github/github/logo.png" width="250" alt="VPanel Logo">
 </p>
 
 <h1 align="center">VPanel - پنل مدیریت هوشمند فروش V2Ray</h1>
@@ -20,10 +20,10 @@
 ## ✨ نمایی از محیط پنل
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/arvinvahed/VPNMarket/main/github/github/panel1.PNG" width="45%" alt="داشبورد اصلی">
-  <img src="https://raw.githubusercontent.com/arvinvahed/VPNMarket/main/github/github/panel2.PNG" width="45%" alt="مدیریت کاربران">
+  <img src="https://raw.githubusercontent.com/lkacom/vpanel/main/github/github/panel1.PNG" width="45%" alt="داشبورد اصلی">
+  <img src="https://raw.githubusercontent.com/lkacom/vpanel/main/github/github/panel2.PNG" width="45%" alt="مدیریت کاربران">
   <br>
-  <img src="https://raw.githubusercontent.com/arvinvahed/VPNMarket/main/github/github/panel3.PNG" width="90%" alt="تنظیمات سرور">
+  <img src="https://raw.githubusercontent.com/lkacom/vpanel/main/github/github/panel3.PNG" width="90%" alt="تنظیمات سرور">
 </p>
 
 ## 🚀 ویژگی‌های کلیدی
