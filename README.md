@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/arvinvahed/VPNMarket/main/github/github/logo.PNG" width="250" alt="VPanel Logo">
+  <img src="https://raw.githubusercontent.com/arvinvahed/VPNMarket/main/github/github/logo.png" width="250" alt="VPanel Logo">
 </p>
 
 <h1 align="center">VPanel - پنل مدیریت هوشمند فروش V2Ray</h1>
