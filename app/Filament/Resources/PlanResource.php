@@ -21,7 +21,7 @@ class PlanResource extends Resource
     protected static ?string $navigationGroup = 'مدیریت محصولات';
 
     protected static ?string $navigationLabel = ' پکیج های فروش';
-    protected static ?string $pluralModelLabel = 'پکیج های فروش';
+    protected static ?string $pluralModelLabel = 'مدیریت پکیج ها';
     protected static ?string $modelLabel = 'پکیج جدید';
 
     public static function form(Form $form): Form

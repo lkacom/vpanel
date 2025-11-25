@@ -61,6 +61,7 @@ class InboundResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->description('با کلیک روی هر رکورد میتوانید آن را ویرایش کنید.')
             ->columns([
                 Tables\Columns\TextColumn::make('title')
                     ->label('عنوان')

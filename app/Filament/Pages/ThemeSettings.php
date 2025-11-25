@@ -67,6 +67,7 @@ class ThemeSettings extends Page implements HasForms
             Tabs::make('Tabs')
                 ->id('main-tabs')
                 ->persistTab()
+                ->extraAttributes(['class' => 'max-w-max'])
                 ->tabs([
                     Tabs\Tab::make('تنظیمات قالب')
                         ->icon('heroicon-o-swatch')
