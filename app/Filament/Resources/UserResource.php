@@ -77,8 +77,8 @@ class UserResource extends Resource
                 //
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                Tables\Actions\EditAction::make()->button()->label(''),
+                Tables\Actions\DeleteAction::make()->button()->label(''),
 
 
 
@@ -118,6 +118,7 @@ class UserResource extends Resource
                 Tables\Actions\Action::make('adjust_wallet')
                     ->label('تنظیم کیف پول')
                     ->icon('heroicon-o-currency-dollar')
+                    ->button()
                     ->color('warning')
                     ->modalHeading(fn (User $record) => "تنظیم کیف پول: {$record->name}")
                     ->modalDescription('موجودی کیف پول کاربر را افزایش یا کاهش دهید')

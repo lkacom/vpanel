@@ -95,8 +95,8 @@ class InboundResource extends Resource
                 //
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
+                Tables\Actions\EditAction::make()->button()->label(''),
+                Tables\Actions\DeleteAction::make()->button()->label(''),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
