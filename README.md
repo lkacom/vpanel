@@ -1,4 +1,4 @@
-<p>
+<p align="center">
   <img src="https://raw.githubusercontent.com/lkacom/vpanel/main/github/github/logo.png" width="250" alt="VPanel Logo">
 </p>
 <div dir="rtl">
