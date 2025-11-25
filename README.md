@@ -1,9 +1,8 @@
 <p align="center">
   <img src="https://raw.githubusercontent.com/lkacom/vpanel/main/github/github/logo.png" width="250" alt="VPanel Logo">
 </p>
-<div dir="rtl">
-<h1  dir="rtl">VPanel - پنل مدیریت هوشمند فروش V2Ray</h1>
-</div>
+<h1  dir="rtl">پنل مدیریت و فروش VPN
+</h1>
 <p align="center">
   <strong>یک ابزار متن‌باز، رایگان و مدرن برای مدیریت، فروش و کسب درآمد از سرویس‌های VPN</strong>
 </p>
