@@ -75,7 +75,7 @@
 ### دستور نصب
 
 ```bash
-wget -O install.sh https://raw.githubusercontent.com/arvinvahed/VPNMarket/main/install.sh && sudo bash install.sh
+wget -O install.sh https://raw.githubusercontent.com/lkacom/vpanel/main/install.sh && sudo bash install.sh
 ```
 
 ## 🔄 آپدیت پروژه
