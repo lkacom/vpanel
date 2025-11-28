@@ -14,81 +14,105 @@ NC='\033[0m'
 
 PROJECT_PATH="/var/www/vpanel"
 
+# --- گرفتن عرض ترمینال ---
+TERM_WIDTH=$(tput cols)
+
+# --- تابع وسط‌چین کردن متن ---
+center() {
+    local text="$1"
+    local color="$2"
+    local text_length=${#text}
+    local padding=$(( (TERM_WIDTH - text_length) / 2 ))
+    printf "%*s%s%s%s\n" $padding "" "$color" "$text" "$NC"
+}
+
 echo -e "${YELLOW}--- شروع فرآیند حذف کامل پروژه VPanel ---${NC}"
 echo -e "${RED}⚠️ هشدار: این عملیات غیرقابل بازگشت است و تمام فایل‌ها و دیتابیس پروژه را حذف می‌کند.${NC}"
 echo
 
-# --- دریافت اطلاعات لازم برای حذف ---
-read -p "🌐 دامنه سایت را برای حذف گواهی SSL وارد کنید (مثال: vpanel.example.com): " DOMAIN
-read -p "🗃 نام دیتابیسی که می‌خواهید حذف شود را وارد کنید: " DB_NAME
-read -p "👤 نام کاربری دیتابیسی که می‌خواهید حذف شود را وارد کنید: " DB_USER
-echo
+# --- خواندن اطلاعات دیتابیس از فایل .env ---
+ENV_FILE="$PROJECT_PATH/.env"
+if [ -f "$ENV_FILE" ]; then
+    DB_NAME=$(grep '^DB_DATABASE=' "$ENV_FILE" | cut -d '=' -f2)
+    DB_USER=$(grep '^DB_USERNAME=' "$ENV_FILE" | cut -d '=' -f2)
+else
+    center "⚠️ فایل .env یافت نشد. حذف دیتابیس امکان‌پذیر نیست." "$RED"
+    DB_NAME=""
+    DB_USER=""
+fi
 
-read -p "آیا از حذف کامل پروژه، دیتابیس و کانفیگ‌های مربوطه اطمینان دارید؟ (y/n): " CONFIRMATION
+# --- دریافت اطلاعات دامنه ---
+read -p "🌐 دامنه سایت را برای حذف گواهی SSL وارد کنید (مثال: vpanel.example.com): " DOMAIN
+
+read -p "آیا از حذف کامل پروژه و کانفیگ‌ها اطمینان دارید؟ (y/n): " CONFIRMATION
 if [[ "$CONFIRMATION" != "y" && "$CONFIRMATION" != "Y" ]]; then
-    echo -e "${YELLOW}عملیات لغو شد.${NC}"
+    center "عملیات لغو شد." "$YELLOW"
     exit 0
 fi
 
 # --- مرحله ۱: توقف سرویس‌ها ---
-echo -e "${YELLOW}M 1/7: در حال توقف سرویس‌های VPanel و مرتبط...${NC}"
-sudo supervisorctl stop all || true
-sudo systemctl stop nginx || true
-sudo systemctl stop mysql || true
-sudo systemctl stop redis-server || true
-sudo systemctl stop php8.3-fpm || true
+center "M 1/7: در حال توقف سرویس‌های VPanel و مرتبط..." "$YELLOW"
+sudo systemctl is-active --quiet php8.3-fpm && sudo systemctl stop php8.3-fpm || true
+sudo systemctl is-active --quiet nginx && sudo systemctl stop nginx || true
+sudo systemctl is-active --quiet mysql && sudo systemctl stop mysql || true
+sudo systemctl is-active --quiet redis-server && sudo systemctl stop redis-server || true
+sudo supervisorctl status &>/dev/null && sudo supervisorctl stop all || true
 
 # --- مرحله ۲: حذف کانفیگ‌های Nginx و Supervisor ---
-echo -e "${YELLOW}M 2/7: در حال حذف فایل‌های کانفیگ...${NC}"
+center "M 2/7: در حال حذف فایل‌های کانفیگ..." "$YELLOW"
 sudo rm -f /etc/nginx/sites-available/vpanel
 sudo rm -f /etc/nginx/sites-enabled/vpanel
 sudo rm -f /etc/supervisor/conf.d/vpanel-worker.conf
 
-sudo supervisorctl reread || true
-sudo supervisorctl update || true
+sudo supervisorctl reread &>/dev/null || true
+sudo supervisorctl update &>/dev/null || true
 
 # --- مرحله ۳: حذف فایل‌های پروژه ---
-echo -e "${YELLOW}M 3/7: در حال حذف کامل پوشه پروژه از مسیر $PROJECT_PATH...${NC}"
+center "M 3/7: در حال حذف کامل پوشه پروژه..." "$YELLOW"
 if [ -d "$PROJECT_PATH" ]; then
     sudo rm -rf "$PROJECT_PATH"
-    echo -e "${GREEN}پوشه پروژه با موفقیت حذف شد.${NC}"
+    center "پوشه پروژه با موفقیت حذف شد." "$GREEN"
 else
-    echo -e "${YELLOW}پوشه پروژه یافت نشد (احتمالا قبلاً حذف شده است).${NC}"
+    center "پوشه پروژه یافت نشد (احتمالا قبلاً حذف شده است)." "$YELLOW"
 fi
 
 # --- مرحله ۴: حذف دیتابیس و کاربر دیتابیس ---
-echo -e "${YELLOW}M 4/7: در حال حذف دیتابیس و کاربر مربوطه...${NC}"
-sudo mysql -e "DROP DATABASE IF EXISTS \`$DB_NAME\`;" || true
-sudo mysql -e "DROP USER IF EXISTS '$DB_USER'@'localhost';" || true
-sudo mysql -e "FLUSH PRIVILEGES;" || true
-echo -e "${GREEN}دیتابیس و کاربر با موفقیت حذف شدند.${NC}"
+if [ -n "$DB_NAME" ] && [ -n "$DB_USER" ]; then
+    center "M 4/7: در حال حذف دیتابیس و کاربر مربوطه..." "$YELLOW"
+    sudo mysql -e "DROP DATABASE IF EXISTS \`$DB_NAME\`;" || true
+    sudo mysql -e "DROP USER IF EXISTS '$DB_USER'@'localhost';" || true
+    sudo mysql -e "FLUSH PRIVILEGES;" || true
+    center "دیتابیس و کاربر با موفقیت حذف شدند." "$GREEN"
+else
+    center "نام دیتابیس یا کاربر یافت نشد، حذف دیتابیس انجام نشد." "$RED"
+fi
 
 # --- مرحله ۵: حذف PHP 8.3 ---
-echo -e "${YELLOW}M 5/7: حذف PHP 8.3 و ماژول‌ها...${NC}"
+center "M 5/7: حذف PHP 8.3 و ماژول‌ها..." "$YELLOW"
 sudo apt-get remove -y php8.3* || true
 sudo apt autoremove -y || true
 
 # --- مرحله ۶: حذف Node.js، Composer و وابستگی‌ها ---
-echo -e "${YELLOW}M 6/7: حذف Node.js، Composer و وابستگی‌های پروژه...${NC}"
+center "M 6/7: حذف Node.js، Composer و وابستگی‌های پروژه..." "$YELLOW"
 sudo apt-get remove -y nodejs npm || true
-sudo rm -rf /usr/local/bin/composer || true
+sudo rm -f /usr/local/bin/composer || true
 sudo rm -rf /var/www/.npm || true
 
 # --- مرحله ۷: حذف SSL ---
 read -p "آیا گواهی SSL مربوط به دامنه $DOMAIN نیز حذف شود؟ (y/n): " DELETE_SSL
 if [[ "$DELETE_SSL" == "y" || "$DELETE_SSL" == "Y" ]]; then
-    echo -e "${YELLOW}M 7/7: در حال حذف گواهی SSL...${NC}"
+    center "M 7/7: در حال حذف گواهی SSL..." "$YELLOW"
     sudo certbot delete --cert-name $DOMAIN --non-interactive || echo "گواهی SSL یافت نشد یا در حذف آن مشکلی پیش آمد."
 fi
 
-# --- ری‌استارت سرویس‌ها ---
-sudo systemctl start nginx || true
-sudo systemctl start mysql || true
-sudo systemctl start redis-server || true
+# --- ری‌استارت سرویس‌های اصلی ---
+sudo systemctl is-active --quiet nginx && sudo systemctl start nginx || true
+sudo systemctl is-active --quiet mysql && sudo systemctl start mysql || true
+sudo systemctl is-active --quiet redis-server && sudo systemctl start redis-server || true
 
-# --- پیام نهایی ---
+# --- پیام نهایی وسط‌چین ---
 echo
-echo -e "${GREEN}=====================================================${NC}"
-echo -e "${GREEN}✅ فرآیند حذف کامل با موفقیت انجام شد.${NC}"
-echo -e "سرور شما اکنون برای نصب مجدد آماده است."
-echo -e "${GREEN}=====================================================${NC}"
+center "=====================================================" "$GREEN"
+center "✅ فرآیند حذف کامل با موفقیت انجام شد." "$GREEN"
+center "سرور شما اکنون برای نصب مجدد آماده است." ""
+center "=====================================================" "$GREEN"
