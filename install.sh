@@ -19,7 +19,7 @@ PROJECT_PATH="/var/www/vpanel"
 GITHUB_REPO="https://github.com/lkacom/vpanel.git"
 PHP_VERSION="8.3"
 
-echo -e "${CYAN}|| شروع نصب اسکریپت VPanel ||${CYAN}"
+echo -e "${NC}|| شروع نصب اسکریپت VPanel ||${NC}"
 echo
 
 # === دریافت اطلاعات از کاربر ===
