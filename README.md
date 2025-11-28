@@ -23,6 +23,7 @@
 </h2>
 <p align="center">
   <img src="https://raw.githubusercontent.com/lkacom/vpanel/main/github/github/panel.png" width="90%" alt="پنل مدیریت">
+  <img src="https://raw.githubusercontent.com/lkacom/vpanel/main/github/github/panelw.png" width="90%" alt="پنل مدیریت">
  <br>
   <img src="https://raw.githubusercontent.com/lkacom/vpanel/main/github/github/panel2.PNG" width="90%" alt="تنظیمات">
   <br>
