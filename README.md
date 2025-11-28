@@ -98,7 +98,7 @@ wget -O install.sh https://raw.githubusercontent.com/lkacom/vpanel/main/install.
 ## 🔄 آپدیت پروژه
 
 ```bash
-cd /var/www/vpnpanel
+cd /var/www/vppanel
 sudo git pull origin main && sudo bash update.sh
 ```
 
