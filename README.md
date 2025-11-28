@@ -105,6 +105,14 @@ sudo git pull origin main && sudo bash update.sh
 
 > ⚠️ هنگام آپدیت، سایت موقتاً در حالت "تعمیر" خواهد بود.
 
+
+### دستور حذف
+
+```bash
+wget -O uninstall.sh https://raw.githubusercontent.com/lkacom/vpanel/refs/heads/main/unistall.sh  && sudo bash uninstall.sh
+```
+
+
 ## 💬 پشتیبانی و جامعه کاربری
 
 * 🔵 **انجمن پشتیبانی:** [VPanel Support](https://forum.iranli.com/t/github)
