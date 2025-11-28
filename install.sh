@@ -135,7 +135,7 @@ sudo -u www-data npm run build
 
 
 sudo -u www-data php artisan key:generate
-sudo -u www-data php artisan migrate --seed --force --no-interaction
+sudo -u www-data php artisan migrate:fresh --seed --force --no-interaction
 sudo -u www-data php artisan storage:link
 
 # === پیکربندی Nginx ===
