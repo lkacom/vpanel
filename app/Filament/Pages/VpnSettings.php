@@ -146,12 +146,10 @@ class VpnSettings extends Page implements HasForms
                                 return $options;
                             })
                             ->native(false)
-                            ->searchable()
                             ->preload()
                             ->allowHtml()
                             ->placeholder('یک اینباند انتخاب کنید')
-                            ->helperText('در صورتی که این لیست خالی باشد اطلاعات ورود به پنل در مرحله قبل صحیح نیست.')
-//                            ->required(fn (Get $get) => $get('panel_type') === 'xui'),
+                            ->helperText('در صورتی که این لیست خالی باشد اطلاعات ورود به پنل در مرحله قبل صحیح نمیباشد یا در سرور خود ورودی تعریف نکرده اید.')
                     ]),
 
             ])->statePath('data')
