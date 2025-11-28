@@ -16,6 +16,8 @@ NC='\033[0m'
 PROJECT_PATH="/var/www/vpanel"
 WEB_USER="www-data"
 
+sudo git config --global --add safe.directory $PROJECT_PATH
+
 # --- مرحله ۰: بررسی‌های اولیه ---
 echo -e "${CYAN}--- شروع فرآیند آپدیت پروژه vpanel ---${NC}"
 
