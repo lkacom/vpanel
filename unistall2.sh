@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ==================================================================================
-# ===                              اسکریپت حذف کامل VPanel                     ===
+# ===                                                    اسکریپت حذف کامل VPanel ===
 # ==================================================================================
 
 set -e
@@ -11,15 +11,14 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m'
-
 PROJECT_PATH="/var/www/vpanel"
 
-echo -e "${YELLOW}--- شروع فرآیند حذف کامل پروژه VPanel ---${NC}"
+echo -e "${YELLOW}--- شروع فرآیند حذف کامل پروژه vpanel ---${NC}"
 echo -e "${RED}⚠️ هشدار: این عملیات غیرقابل بازگشت است و تمام فایل‌ها و دیتابیس پروژه را حذف می‌کند.${NC}"
 echo
 
 # --- دریافت اطلاعات لازم برای حذف ---
-read -p "🌐 دامنه سایت را برای حذف گواهی SSL وارد کنید (مثال: vpanel.example.com): " DOMAIN
+read -p "🌐 لطفا دامنه سایت را برای حذف گواهی SSL وارد کنید (مثال: vpanel.example.com): " DOMAIN
 read -p "🗃 نام دیتابیسی که می‌خواهید حذف شود را وارد کنید: " DB_NAME
 read -p "👤 نام کاربری دیتابیسی که می‌خواهید حذف شود را وارد کنید: " DB_USER
 echo
@@ -31,24 +30,23 @@ if [[ "$CONFIRMATION" != "y" && "$CONFIRMATION" != "Y" ]]; then
 fi
 
 # --- مرحله ۱: توقف سرویس‌ها ---
-echo -e "${YELLOW}M 1/7: در حال توقف سرویس‌های VPanel و مرتبط...${NC}"
-sudo supervisorctl stop all || true
-sudo systemctl stop nginx || true
-sudo systemctl stop mysql || true
-sudo systemctl stop redis-server || true
-sudo systemctl stop php8.3-fpm || true
+echo -e "${YELLOW} M 1/5: در حال توقف سرویس‌های Nginx و Supervisor...${NC}"
+sudo supervisorctl stop vpanel-worker:* || echo "Worker already stopped or not found."
+sudo systemctl stop nginx
 
 # --- مرحله ۲: حذف کانفیگ‌های Nginx و Supervisor ---
-echo -e "${YELLOW}M 2/7: در حال حذف فایل‌های کانفیگ...${NC}"
+echo -e "${YELLOW} M 2/5: در حال حذف فایل‌های کانفیگ...${NC}"
 sudo rm -f /etc/nginx/sites-available/vpanel
 sudo rm -f /etc/nginx/sites-enabled/vpanel
 sudo rm -f /etc/supervisor/conf.d/vpanel-worker.conf
 
-sudo supervisorctl reread || true
-sudo supervisorctl update || true
+echo "بارگذاری مجدد سرویس‌ها برای اعمال تغییرات..."
+sudo supervisorctl reread
+sudo supervisorctl update
+sudo systemctl reload nginx
 
 # --- مرحله ۳: حذف فایل‌های پروژه ---
-echo -e "${YELLOW}M 3/7: در حال حذف کامل پوشه پروژه از مسیر $PROJECT_PATH...${NC}"
+echo -e "${YELLOW} M 3/5: در حال حذف کامل پوشه پروژه از مسیر $PROJECT_PATH...${NC}"
 if [ -d "$PROJECT_PATH" ]; then
     sudo rm -rf "$PROJECT_PATH"
     echo -e "${GREEN}پوشه پروژه با موفقیت حذف شد.${NC}"
@@ -57,38 +55,32 @@ else
 fi
 
 # --- مرحله ۴: حذف دیتابیس و کاربر دیتابیس ---
-echo -e "${YELLOW}M 4/7: در حال حذف دیتابیس و کاربر مربوطه...${NC}"
-sudo mysql -e "DROP DATABASE IF EXISTS \`$DB_NAME\`;" || true
-sudo mysql -e "DROP USER IF EXISTS '$DB_USER'@'localhost';" || true
-sudo mysql -e "FLUSH PRIVILEGES;" || true
+echo -e "${YELLOW} M 4/5: در حال حذف دیتابیس و کاربر مربوطه...${NC}"
+sudo mysql -e "DROP DATABASE IF EXISTS \`$DB_NAME\`;"
+sudo mysql -e "DROP USER IF EXISTS '$DB_USER'@'localhost';"
+sudo mysql -e "FLUSH PRIVILEGES;"
 echo -e "${GREEN}دیتابیس و کاربر با موفقیت حذف شدند.${NC}"
 
-# --- مرحله ۵: حذف PHP 8.3 ---
-echo -e "${YELLOW}M 5/7: حذف PHP 8.3 و ماژول‌ها...${NC}"
-sudo apt-get remove -y php8.3* || true
-sudo apt autoremove -y || true
-
-# --- مرحله ۶: حذف Node.js، Composer و وابستگی‌ها ---
-echo -e "${YELLOW}M 6/7: حذف Node.js، Composer و وابستگی‌های پروژه...${NC}"
-sudo apt-get remove -y nodejs npm || true
-sudo rm -rf /usr/local/bin/composer || true
-sudo rm -rf /var/www/.npm || true
-
-# --- مرحله ۷: حذف SSL ---
+# --- مرحله ۵: حذف گواهی SSL ---
 read -p "آیا گواهی SSL مربوط به دامنه $DOMAIN نیز حذف شود؟ (y/n): " DELETE_SSL
 if [[ "$DELETE_SSL" == "y" || "$DELETE_SSL" == "Y" ]]; then
-    echo -e "${YELLOW}M 7/7: در حال حذف گواهی SSL...${NC}"
+    echo -e "${YELLOW} M 5/5: در حال حذف گواهی SSL...${NC}"
     sudo certbot delete --cert-name $DOMAIN --non-interactive || echo "گواهی SSL یافت نشد یا در حذف آن مشکلی پیش آمد."
 fi
 
-# --- ری‌استارت سرویس‌ها ---
-sudo systemctl start nginx || true
-sudo systemctl start mysql || true
-sudo systemctl start redis-server || true
-
 # --- پیام نهایی ---
+sudo systemctl start nginx # ری‌استارت Nginx برای اطمینان
 echo
 echo -e "${GREEN}=====================================================${NC}"
 echo -e "${GREEN}✅ فرآیند حذف کامل با موفقیت انجام شد.${NC}"
 echo -e "سرور شما اکنون برای نصب مجدد آماده است."
 echo -e "${GREEN}=====================================================${NC}"
+```
+
+---
+### **مرحله ۲: نصب مجدد و تمیز**
+
+حالا که سرور شما کاملاً تمیز شده است، به سادگی می‌توانید با اجرای همان دستور اولیه، پروژه را از نو نصب کنید:
+
+```bash
+wget -O install.sh https://raw.githubusercontent.com/lkacom/vpanel/main/install.sh && sudo bash install.sh

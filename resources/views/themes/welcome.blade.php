@@ -1,28 +1,27 @@
 @extends('layouts.frontend')
 
-@section('title', 'خوش آمدید - VPNMarket')
+@section('title', 'پنل مدیریت و فروش - VPanel')
 
 @push('styles')
     <link rel="stylesheet" href="{{ asset('themes/welcome/css/style.css') }}">
 @endpush
 
 @section('content')
-    <div class="welcome-box" data-aos="fade-up">
-        <h1>نصب با موفقیت انجام شد!</h1>
-        <p>
-            به <span class="brand">VPNMarket</span> خوش آمدید.
-            <br>
-            برای شروع و انتخاب قالب اصلی وب‌سایت، لطفاً از طریق دکمه زیر وارد پنل مدیریت شوید.
-        </p>
-        <a href="/admin" class="btn-admin-panel">
-            <i class="fas fa-cogs me-2"></i>
-            ورود به پنل مدیریت
+    <div class="welcome-box" data-aos="fade-up" style="text-align: center; margin-top: 100px;">
+        <!-- لوگو -->
+        <img src="{{ asset('images/logo.png') }}" alt="VPanel Logo" style="max-width: 200px; margin-bottom: 20px;">
+
+        <!-- عنوان -->
+        <h1>پنل مدیریت و فروش</h1>
+
+        <!-- دکمه ورود -->
+        <a href="/admin" class="btn-admin-panel" style="margin-top: 30px; display: inline-block; padding: 12px 30px; font-size: 18px;">
+            ورود به پنل کاربری
         </a>
     </div>
 @endsection
 
 @push('scripts')
-
     <script>
         AOS.init({
             duration: 800,

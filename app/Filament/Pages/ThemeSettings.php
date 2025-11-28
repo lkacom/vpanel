@@ -64,7 +64,7 @@ class ThemeSettings extends Page implements HasForms
                         ->icon('heroicon-o-swatch')
                         ->schema([
                             Select::make('active_theme')->label('قالب اصلی سایت')->options([
-                                'welcome' => 'قالب خوش‌آمدگویی',
+                                'welcome' => 'غیرفعال',
                                 'rocket' => 'قالب RoketVPN (موشکی)',
                             ])->default('welcome')->live(),
                             Select::make('active_auth_theme')->label('قالب صفحات ورود/ثبت‌نام')->options([
