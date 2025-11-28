@@ -16,7 +16,7 @@
 
         <!-- دکمه ورود -->
         <a href="/admin" class="btn-admin-panel" style="margin-top: 30px; display: inline-block; padding: 12px 30px; font-size: 18px;">
-            ورود به پنل کاربری
+            ورود به پنل مدیریت
         </a>
     </div>
 @endsection
