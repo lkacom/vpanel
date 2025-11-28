@@ -373,10 +373,12 @@ class OrderController extends Controller
                                     'search_client_id' => $clientId
                                 ]);
 
-                                $addResponse = $xuiService->addClient($inboundData['id'], $clientData);
+//                                $addResponse = $xuiService->addClient($inboundData['id'], $clientData);
+                                $addResponse = $xuiService->updateClient($inboundData['id'],$clientId,$clientData);
 
                                 if ($addResponse && isset($addResponse['success']) && $addResponse['success']) {
-                                    $uuid = $addResponse['generated_uuid'];
+                                    $uuid = $clientId;
+
                                     $streamSettings = $inboundData['streamSettings'] ?? [];
                                     if (is_string($streamSettings)) {
                                         $streamSettings = json_decode($streamSettings, true) ?? [];
