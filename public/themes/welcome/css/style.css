@@ -1,0 +1,54 @@
+@import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap');
+
+body {
+    font-family: 'Vazirmatn', sans-serif;
+    background: linear-gradient(45deg, #121212, #1a202c);
+    color: #e2e8f0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    text-align: center;
+}
+
+.welcome-box {
+    background: rgba(30, 41, 59, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 15px;
+    padding: 50px;
+    max-width: 600px;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.welcome-box h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #fff;
+}
+
+.welcome-box .brand {
+    color: #4ade80; /* A nice green color */
+    font-weight: 700;
+}
+
+.welcome-box p {
+    font-size: 1.1rem;
+    margin: 20px 0 30px;
+    line-height: 1.8;
+}
+
+.btn-admin-panel {
+    background: linear-gradient(90deg, #770088, #10b981);
+    color: #fff;
+    padding: 15px 35px;
+    text-decoration: none;
+    border-radius: 50px;
+    font-weight: 700;
+    transition: all 0.3s ease;
+}
+
+.btn-admin-panel:hover {
+    transform: scale(1.05);
+    box-shadow: 0 5px 20px rgba(22, 163, 74, 0.4);
+}

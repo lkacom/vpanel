@@ -1,0 +1,30 @@
+{
+    "name": "nwidart/ticketing",
+    "description": "",
+    "authors": [
+        {
+            "name": "Nicolas Widart",
+            "email": "n.widart@gmail.com"
+        }
+    ],
+    "extra": {
+        "laravel": {
+            "providers": [],
+            "aliases": {
+
+            }
+        }
+    },
+    "autoload": {
+        "psr-4": {
+            "Modules\\Ticketing\\": "app/",
+            "Modules\\Ticketing\\Database\\Factories\\": "database/factories/",
+            "Modules\\Ticketing\\Database\\Seeders\\": "database/seeders/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Modules\\Ticketing\\Tests\\": "tests/"
+        }
+    }
+}

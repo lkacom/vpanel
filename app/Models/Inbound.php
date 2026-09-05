@@ -1,0 +1,46 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class Inbound extends Model
+{
+
+    protected $fillable = [
+        'inbound_data',
+        'title',
+    ];
+
+
+    protected $casts = [
+        'inbound_data' => 'array',
+    ];
+
+    protected $appends = ['panel_id', 'is_active', 'remark', 'dropdown_label'];
+
+    public function getPanelIdAttribute(): ?string
+    {
+        return isset($this->inbound_data['id']) ? (string) $this->inbound_data['id'] : null;
+    }
+
+    public function getIsActiveAttribute(): bool
+    {
+        return $this->inbound_data['enable'] ?? false;
+    }
+
+    public function getRemarkAttribute(): ?string
+    {
+        return $this->inbound_data['remark'] ?? null;
+    }
+
+    public function getDropdownLabelAttribute(): string
+    {
+        $panelId = $this->panel_id ?? 'N/A';
+        $remark = $this->remark ?? 'بدون عنوان';
+        $protocol = $this->inbound_data['protocol'] ?? 'unknown';
+        $port = $this->inbound_data['port'] ?? '-';
+
+        return "{$remark} (ID: {$panelId}) - {$protocol}:{$port}";
+    }
+}

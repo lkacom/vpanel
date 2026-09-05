@@ -1,0 +1,114 @@
+@import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700;800&display.swap');
+
+:root {
+    --dark-bg: #020412;
+    --card-bg: rgba(9, 14, 31, 0.7);
+    --glow-teal: #00FFC2;
+    --glow-purple: #7B2BFF;
+    --text-primary: #E6F1FF;
+    --text-secondary: #8892b0;
+    --border-color: rgba(0, 255, 194, 0.2);
+}
+
+body {
+    font-family: 'Vazirmatn', sans-serif;
+    direction: rtl;
+    text-align: right;
+    background-color: var(--dark-bg);
+    color: var(--text-primary);
+    overflow-x: hidden;
+}
+
+#particles-js {
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    z-index: -1;
+}
+
+.content-wrapper { z-index: 1; position: relative; }
+
+.navbar-glass {
+    background: rgba(2, 4, 18, 0.7);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.hero-section {
+    min-height: 90vh;
+    display: flex;
+    align-items: center;
+    text-align: center;
+}
+
+.arcane-title {
+    font-weight: 800;
+    background: linear-gradient(90deg, var(--glow-teal), var(--glow-purple), var(--glow-teal));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: gradient-text 5s ease infinite;
+    background-size: 200% 200%;
+}
+
+@keyframes gradient-text {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+.btn-arcane {
+    background: transparent;
+    border: 2px solid var(--glow-teal);
+    color: var(--glow-teal);
+    font-weight: 700;
+    padding: 0.75rem 2rem;
+    transition: all 0.3s ease;
+    box-shadow: 0 0 15px rgba(0, 255, 194, 0.3), inset 0 0 10px rgba(0, 255, 194, 0.2);
+}
+.btn-arcane:hover {
+    background: var(--glow-teal);
+    color: var(--dark-bg);
+    box-shadow: 0 0 25px var(--glow-teal);
+}
+
+.section-title {
+    font-weight: 700;
+    text-shadow: 0 0 8px var(--glow-teal);
+}
+
+.arcane-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    padding: 2rem;
+    transition: all 0.3s ease;
+    clip-path: polygon(100% 0, 100% calc(100% - 30px), calc(100% - 30px) 100%, 0 100%, 0 0);
+}
+
+.arcane-card:hover {
+    transform: translateY(-5px);
+    border-color: var(--glow-teal);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+.arcane-card.popular {
+    border-color: var(--glow-purple);
+}
+.arcane-card.popular:hover {
+    border-color: var(--glow-purple);
+    box-shadow: 0 0 20px rgba(123, 43, 255, 0.4);
+}
+
+.icon-glow {
+    font-size: 3rem;
+    color: var(--glow-teal);
+    text-shadow: 0 0 15px var(--glow-teal);
+    margin-bottom: 1rem;
+}
+
+.footer {
+    background: transparent;
+    border-top: 1px solid var(--border-color);
+}

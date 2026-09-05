@@ -1,0 +1,361 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Vazirmatn:wght@400;700;900&display=swap');
+
+:root {
+    --fire-red: #cc2200; /* Deep, aggressive red */
+    --lava-orange: #ff6600; /* Bright orange for fire core */
+    --gold-glow: #e6b800; /* Richer gold */
+    --bg-dark: #100505; /* Very dark, almost black-red */
+    --bg-card: rgba(30, 10, 10, 0.8); /* Translucent dark red */
+    --text-light: #f0e0d0;
+    --border-color: rgba(255, 69, 0, 0.4);
+    --neon-gold: var(--gold-glow); /* For popular plan */
+}
+
+/* Base styles and fonts */
+body {
+    font-family: 'Vazirmatn', sans-serif;
+    background-color: var(--bg-dark);
+    color: var(--text-light);
+    overflow-x: hidden;
+    position: relative;
+    background: #000000 !important;
+}
+
+h1, h2, h3, h4, .dragon-title {
+    font-family: 'Cinzel Decorative', serif;
+    color: var(--gold-glow);
+    text-shadow: 0 0 8px var(--fire-red), 0 0 15px var(--lava-orange);
+}
+
+/* Video Background */
+.video-background {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh;
+    overflow: hidden;
+    z-index: -1;
+}
+
+#bg-video {
+    min-width: 100%;
+    min-height: 100%;
+    width: auto;
+    height: auto;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    object-fit: cover;
+    filter: brightness(0.6) contrast(1.2);
+}
+
+.video-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+}
+
+
+
+
+/* Navbar */
+.navbar {
+    background: rgba(16, 5, 5, 0.8);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border-color);
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.4);
+    transition: background-color 0.3s ease;
+}
+.navbar-logo {
+    height: 30px;
+    margin-left: 10px;
+    filter: drop-shadow(0 0 5px var(--gold-glow));
+}
+.navbar-brand {
+    color: var(--gold-glow) !important;
+    font-family: 'Cinzel Decorative', serif;
+    font-weight: 700;
+    text-shadow: 0 0 8px var(--lava-orange);
+}
+.navbar-nav .nav-link {
+    color: var(--text-light) !important;
+    transition: color 0.3s ease, text-shadow 0.3s ease;
+}
+.navbar-nav .nav-link:hover {
+    color: var(--gold-glow) !important;
+    text-shadow: 0 0 10px var(--lava-orange);
+}
+.btn-dragon-nav {
+    border-color: var(--gold-glow);
+    color: var(--gold-glow);
+    box-shadow: 0 0 5px var(--gold-glow);
+    transition: all 0.3s ease;
+}
+.btn-dragon-nav:hover {
+    background-color: var(--gold-glow);
+    color: var(--bg-dark);
+    box-shadow: 0 0 15px var(--gold-glow);
+}
+
+/* Hero Section */
+.hero-section {
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    position: relative;
+    padding-top: 80px;
+    z-index: 1;
+}
+
+
+.hero-title-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    margin-bottom: 20px;
+}
+
+.dragon-title {
+    font-size: clamp(3rem, 7vw, 6rem);
+    font-weight: 900;
+    text-transform: uppercase;
+    color: white;
+    background: linear-gradient(45deg, var(--fire-red) 0%, var(--lava-orange) 50%, var(--gold-glow) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: text-flicker 2s infinite alternate, pulse-glow 3s infinite alternate;
+    text-shadow: 0 0 15px rgba(255, 69, 0, 0.7);
+    white-space: nowrap;
+    position: relative;
+    z-index: 10;
+}
+
+.hero-title-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    margin-bottom: 20px;
+}
+
+.dragon-title-deco {
+    position: absolute;
+    height: auto;
+    opacity: 0.7;
+    filter: drop-shadow(0 0 15px rgba(255, 102, 0, 0.6)) grayscale(0.1);
+    transition: all 0.5s ease-out;
+    z-index: 5;
+}
+
+
+.dragon-title-left {
+
+    width: clamp(200px, 30vw, 100px);
+    left: 0;
+    top: 50%;
+
+    transform: translateY(-50%) translateX(-30%);
+}
+
+
+.dragon-title-right {
+
+    width: clamp(250px, 35vw, 100px);
+    right: 0;
+    top: 50%;
+
+    transform: translateY(-50%) translateX(30%) scaleX(-1);
+}
+
+
+@media (max-width: 768px) {
+    .dragon-title-left {
+        width: 150px;
+        transform: translateY(-50%) translateX(-10%);
+        opacity: 0.6;
+    }
+    .dragon-title-right {
+        width: 200px;
+        transform: translateY(-50%) translateX(10%) scaleX(-1);
+        opacity: 0.6;
+    }
+    .dragon-title {
+        font-size: clamp(2.5rem, 8vw, 4rem);
+    }
+}
+
+
+
+@keyframes text-flicker {
+    0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% {
+        text-shadow: 0 0 10px var(--lava-orange), 0 0 20px var(--fire-red), 0 0 30px var(--gold-glow);
+        opacity: 1;
+    }
+    20%, 24%, 55% {
+        text-shadow: none;
+        opacity: 0.8;
+    }
+}
+@keyframes pulse-glow {
+    from { text-shadow: 0 0 8px var(--fire-red), 0 0 15px var(--lava-orange); }
+    to { text-shadow: 0 0 15px var(--fire-red), 0 0 25px var(--gold-glow); }
+}
+
+.hero-subtitle {
+    font-size: 1.3rem;
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* Dragon Button */
+.btn-dragon {
+    font-weight: 700;
+    color: var(--gold-glow);
+    background: linear-gradient(45deg, var(--fire-red), var(--lava-orange));
+    border: 2px solid var(--gold-glow);
+    padding: 15px 40px;
+    border-radius: 8px;
+    transition: all 0.4s ease;
+    box-shadow: 0 0 20px var(--fire-red), inset 0 0 10px var(--lava-orange);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    animation: button-pulse 1.5s infinite alternate;
+}
+.btn-dragon:hover {
+    background: linear-gradient(45deg, var(--lava-orange), var(--fire-red));
+    color: var(--bg-dark);
+    box-shadow: 0 0 40px var(--gold-glow), inset 0 0 20px var(--fire-red);
+    border-color: var(--fire-red);
+    transform: translateY(-3px) scale(1.02);
+}
+@keyframes button-pulse {
+    from { box-shadow: 0 0 15px var(--fire-red), inset 0 0 8px var(--lava-orange); }
+    to { box-shadow: 0 0 25px var(--lava-orange), inset 0 0 12px var(--fire-red); }
+}
+
+/* Darker Section Background (for readability) */
+.bg-darker-section {
+    background-color: rgba(0, 0, 0, 0.7);
+    position: relative;
+    z-index: 1;
+}
+
+/* Section Title */
+.section-title {
+    font-weight: 700;
+    color: var(--gold-glow);
+    text-shadow: 0 0 10px var(--fire-red), 0 0 20px var(--lava-orange);
+    position: relative;
+    padding-bottom: 10px;
+}
+.section-title::after {
+    content: '';
+    display: block;
+    width: 80px;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, var(--fire-red), var(--gold-glow), var(--fire-red), transparent);
+    margin: 10px auto 0;
+    box-shadow: 0 0 10px var(--lava-orange);
+    border-radius: 2px;
+}
+
+/* Dragon Card */
+.dragon-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    padding: 30px;
+    position: relative;
+    clip-path: polygon(5% 0, 100% 0, 95% 100%, 0 100%);
+    transition: all 0.4s ease;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+}
+.dragon-card:hover {
+    transform: translateY(-8px) scale(1.02);
+    border-color: var(--gold-glow);
+    box-shadow: 0 8px 25px rgba(255, 215, 0, 0.3), inset 0 0 15px var(--lava-orange);
+    background: rgba(40, 15, 15, 0.9);
+}
+.dragon-card.popular {
+    border: 3px solid var(--gold-glow);
+    box-shadow: 0 0 25px var(--gold-glow), inset 0 0 15px var(--fire-red);
+    animation: popular-card-glow 2s infinite alternate;
+}
+@keyframes popular-card-glow {
+    from { box-shadow: 0 0 15px var(--gold-glow), inset 0 0 10px var(--fire-red); }
+    to { box-shadow: 0 0 30px var(--gold-glow), inset 0 0 20px var(--lava-orange); }
+}
+
+.icon-dragon-glow {
+    font-size: 3.5rem;
+    color: var(--gold-glow);
+    text-shadow: 0 0 20px var(--lava-orange), 0 0 10px var(--fire-red);
+    margin-bottom: 25px;
+    animation: icon-flicker 2s infinite alternate;
+}
+@keyframes icon-flicker {
+    0%, 100% { opacity: 1; text-shadow: 0 0 15px var(--lava-orange); }
+    50% { opacity: 0.8; text-shadow: 0 0 25px var(--gold-glow); }
+}
+
+.plan-features li {
+    padding: 5px 0;
+    color: var(--text-light);
+    border-bottom: 1px dashed rgba(255, 215, 0, 0.1);
+}
+.plan-features li:last-child {
+    border-bottom: none;
+}
+.plan-features i {
+    color: var(--gold-glow);
+}
+
+
+.dragon-footer {
+    background-color: #080303;
+    border-top: 1px solid var(--border-color);
+    box-shadow: 0 -5px 15px rgba(0, 0, 0, 0.3);
+}
+.dragon-footer p {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+
+
+.dragon-accordion-item {
+    background: var(--bg-card) !important;
+    border: 1px solid var(--border-color) !important;
+    color: var(--text-light);
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+    transition: all 0.3s ease;
+}
+.dragon-accordion-item:hover {
+    border-color: var(--gold-glow) !important;
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.2);
+}
+
+.dragon-accordion-button {
+    color: var(--text-light) !important;
+    background: transparent !important;
+    font-weight: 700;
+    font-family: 'Cinzel Decorative', serif;
+    text-shadow: 0 0 5px rgba(255, 102, 0, 0.3);
+}
+
+.accordion-button:not(.collapsed) {
+    color: var(--gold-glow) !important;
+    background-color: rgba(255, 69, 0, 0.15) !important;
+    box-shadow: inset 0 -1px 0 rgba(255, 215, 0, 0.5);
+}
+.accordion-button::after {
+    filter: brightness(1.5) drop-shadow(0 0 5px var(--gold-glow));
+}

@@ -1,0 +1,14 @@
+@font-face {
+    font-family: Vaz;
+    src: url('../fonts/Vazir.woff') format('woff') ;
+    font-weight: 600;
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: mah;
+    src: url('../fonts/Digi Mahsa Bold.ttf')   ;
+    font-weight: 100;
+    font-style: normal;
+    font-display: swap;
+}

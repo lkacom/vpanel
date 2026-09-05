@@ -1,0 +1,87 @@
+@import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700;900&display=swap');
+
+:root {
+    --neon-cyan: #00f6ff;
+    --neon-magenta: #ff00c1;
+    --bg-dark: #0a0a1a;
+    --bg-card: rgba(15, 15, 35, 0.7);
+    --text-light: #e0e0ff;
+    --border-color: rgba(0, 246, 255, 0.2);
+}
+
+body {
+    font-family: 'Vazirmatn', sans-serif;
+    background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iIzBhMGExYSI+PC9yZWN0PjxwYXRoIGQ9Ik0wIDAgMTAwIDExTTEwMCAwTDAgMTFNMCAxMDBMMTAwIDg5TTggMEw4IDEwME0xOCAwTDE4IDEwME0yOCAwTDI4IDEwME0zOCAwTDM4IDEwME00OCAwTDQ4IDEwME01OCAwTDU4IDEwME02OCAwTDY4IDEwME03OCAwTDc4IDEwME04OCAwTDg4IDEwME05OCAwTDk4IDEwME0wIDhMMTAwIDhNMCAxOEwxMDAgMThNMCAyOEwxMDAgMjhNMCAzOEwxMDAgMzhNMCA0OEwxMDAgNDhNMCA1OEwxMDAgNThNMCA2OEwxMDAgNjhNMCA3OEwxMDAgNzhNMCA4OEwxMDAgODhNMCA5OEwxMDAgOTgiIHN0cm9rZS13aWR0aD0iMC4zIiBzdHJva2U9IiMxNDEyMjUiPjwvcGF0aD48L3N2Zz4=');
+    background-color: var(--bg-dark);
+    color: var(--text-light);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+}
+
+.auth-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    backdrop-filter: blur(10px);
+    width: 100%;
+    max-width: 400px;
+    padding: 40px;
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%);
+}
+
+.auth-logo {
+    font-weight: 900;
+    font-size: 2rem;
+    color: var(--neon-cyan);
+    text-shadow: 0 0 10px var(--neon-cyan);
+    margin-bottom: 30px;
+    text-align: center;
+}
+
+.form-control {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--border-color);
+    color: var(--text-light) !important;
+    border-radius: 5px;
+    padding: 12px;
+}
+
+.form-control:focus {
+    background: rgba(0, 0, 0, 0.5);
+    border-color: var(--neon-cyan);
+    box-shadow: 0 0 10px var(--neon-cyan);
+}
+
+.form-check-input:checked {
+    background-color: var(--neon-cyan);
+    border-color: var(--neon-cyan);
+}
+
+.btn-cyber-submit {
+    width: 100%;
+    font-weight: 700;
+    color: var(--neon-cyan);
+    background: transparent;
+    border: 2px solid var(--neon-cyan);
+    padding: 12px;
+    border-radius: 5px;
+    transition: all 0.3s ease;
+    box-shadow: 0 0 10px var(--neon-cyan), inset 0 0 5px var(--neon-cyan);
+}
+.btn-cyber-submit:hover {
+    background: var(--neon-cyan);
+    color: var(--bg-dark);
+    box-shadow: 0 0 25px var(--neon-cyan);
+}
+
+.auth-link {
+    color: var(--neon-cyan);
+    text-decoration: none;
+    transition: color 0.3s;
+}
+
+.auth-link:hover {
+    color: var(--neon-magenta);
+}
