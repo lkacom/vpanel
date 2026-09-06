@@ -11,7 +11,6 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Tabs;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Toggle;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Forms\Form;
@@ -171,26 +170,7 @@ class ThemeSettings extends Page implements HasForms
                         ]),
                     ]),
 
-                    Tabs\Tab::make('تنظیمات ربات تلگرام')->icon('heroicon-o-paper-airplane')->schema([
-                        Section::make('اطلاعات اتصال ربات')->schema([
-                            TextInput::make('telegram_bot_token')->label('توکن ربات تلگرام')->password(),
-                            TextInput::make('telegram_admin_chat_id')->label('چت آی‌دی ادمین')->numeric(),
-                        ]),
-                        Section::make('اجبار به عضویت در کانال')
-                            ->description('کاربران باید قبل از استفاده از ربات، در کانال عضو شوند.')
-                            ->schema([
-                                Toggle::make('force_join_enabled')
-                                    ->label('فعالسازی اجبار به عضویت')
-                                    ->reactive()
-                                    ->default(false),
-                                TextInput::make('telegram_required_channel_id')
-                                    ->label('آی‌دی کانال (Username یا Chat ID)')
-                                    ->placeholder('@mychannel یا -100123456789')
-                                    ->hint('اگر کانال عمومی است @username و اگر خصوصی است Chat ID (مثل -100123456789) را وارد کنید.')
-                                    ->required(fn (Get $get): bool => $get('force_join_enabled') === true)
-                                    ->maxLength(100),
-                            ]),
-                    ]),
+
 
                     Tabs\Tab::make('سیستم دعوت از دوستان')
                         ->icon('heroicon-o-gift')

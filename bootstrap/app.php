@@ -12,7 +12,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->validateCsrfTokens(except: [
-            'webhooks/*',  // تلگرام از CSRF معاف
+            'webhooks/*',  // وبهوک‌های سرویس‌های پرداخت از CSRF معاف هستند
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

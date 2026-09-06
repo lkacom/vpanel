@@ -102,12 +102,10 @@ class TicketResource extends Resource
                     ->label('منبع')
                     ->icon(fn(string $state): string => match ($state) {
                         'web' => 'heroicon-o-globe-alt',
-                        'telegram' => 'heroicon-o-paper-airplane',
                         default => 'heroicon-o-question-mark-circle',
                     })
                     ->color(fn(string $state): string => match ($state) {
                         'web' => 'primary',
-                        'telegram' => 'info',
                         default => 'gray',
                     }),
 

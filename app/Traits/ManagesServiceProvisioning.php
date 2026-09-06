@@ -18,15 +18,14 @@ trait ManagesServiceProvisioning
      * @param string $panelType نوع پنل (marzban یا xui)
      * @param \Illuminate\Support\Collection $settings تنظیمات برنامه
      * @param Order $order سفارش
-     * @param bool $isTelegramContext آیا از تلگرام فراخوانی شده؟ (برای مدیریت خطا)
      * @return array|false آرایه‌ای شامل ['config' => $config, 'expires_at' => $expires_at] در صورت موفقیت، یا false در صورت شکست
      */
-    public function provisionService(string $panelType, $settings, Order $order, bool $isTelegramContext = false)
+    public function provisionService(string $panelType, $settings, Order $order)
     {
         $user = $order->user;
         $plan = $order->plan;
         if (!$plan) {
-            $this->handleProvisioningError("سفارش {$order->id} فاقد پلن است.", $isTelegramContext);
+            $this->handleProvisioningError("سفارش {$order->id} فاقد پلن است.");
             return false;
         }
 
@@ -36,7 +35,7 @@ trait ManagesServiceProvisioning
         if ($isRenewal) {
             $originalOrder = Order::find($order->renews_order_id);
             if (!$originalOrder) {
-                $this->handleProvisioningError('سفارش اصلی جهت تمدید یافت نشد.', $isTelegramContext);
+                $this->handleProvisioningError('سفارش اصلی جهت تمدید یافت نشد.');
                 return false;
             }
         }
@@ -76,22 +75,22 @@ trait ManagesServiceProvisioning
                     $success = true;
                 } else {
                     $error = $response['detail'] ?? 'پاسخ نامعتبر از مرزبان.';
-                    $this->handleProvisioningError($error, $isTelegramContext, ['response' => $response]);
+                    $this->handleProvisioningError($error, ['response' => $response]);
                     return false;
                 }
 
             } elseif ($panelType === 'xui') {
                 $inboundId = $settings->get('xui_default_inbound_id');
                 if (!$inboundId) {
-                    $this->handleProvisioningError('اینباند XUI در تنظیمات ست نشده.', $isTelegramContext); return false;
+                    $this->handleProvisioningError('اینباند XUI در تنظیمات ست نشده.'); return false;
                 }
                 $xuiService = new XUIService($settings->get('xui_host'), $settings->get('xui_user'), $settings->get('xui_pass'));
                 if (!$xuiService->login()) {
-                    $this->handleProvisioningError('خطا در لاگین به پنل X-UI.', $isTelegramContext); return false;
+                    $this->handleProvisioningError('خطا در لاگین به پنل X-UI.'); return false;
                 }
                 $inbound = Inbound::find($inboundId);
                 if (!$inbound || !$inbound->inbound_data) {
-                    $this->handleProvisioningError('اطلاعات اینباند پیش‌فرض X-UI یافت نشد.', $isTelegramContext); return false;
+                    $this->handleProvisioningError('اطلاعات اینباند پیش‌فرض X-UI یافت نشد.'); return false;
                 }
 
                 $inboundData = json_decode($inbound->inbound_data, true);
@@ -100,7 +99,7 @@ trait ManagesServiceProvisioning
 
                 if ($isRenewal) {
                     //TODO: منطق تمدید کاربر در XUI (یافتن کاربر و آپدیت)
-                    $this->handleProvisioningError('تمدید خودکار برای پنل XUI هنوز پیاده‌سازی نشده است.', $isTelegramContext);
+                    $this->handleProvisioningError('تمدید خودکار برای پنل XUI هنوز پیاده‌سازی نشده است.');
                     return false;
                 }
 
@@ -115,11 +114,11 @@ trait ManagesServiceProvisioning
                             $finalConfig = $subBaseUrl . '/sub/' . $subId;
                             $success = true;
                         } else {
-                            $this->handleProvisioningError('آدرس پایه اشتراک XUI یا ID اشتراک ست نشده.', $isTelegramContext); return false;
+                            $this->handleProvisioningError('آدرس پایه اشتراک XUI یا ID اشتراک ست نشده.'); return false;
                         }
                     } else { // single link
                         $uuid = $response['generated_uuid'] ?? null;
-                        if (!$uuid) { $this->handleProvisioningError('UUID از پنل XUI دریافت نشد.', $isTelegramContext); return false; }
+                        if (!$uuid) { $this->handleProvisioningError('UUID از پنل XUI دریافت نشد.'); return false; }
 
                         $streamSettings = json_decode($inboundData['streamSettings'], true);
                         $parsedUrl = parse_url($settings->get('xui_host'));
@@ -139,7 +138,7 @@ trait ManagesServiceProvisioning
                         $success = true;
                     }
                 } else {
-                    $this->handleProvisioningError($response['msg'] ?? 'پاسخ نامعتبر از XUI', $isTelegramContext, ['response' => $response]);
+                    $this->handleProvisioningError($response['msg'] ?? 'پاسخ نامعتبر از XUI', ['response' => $response]);
                     return false;
                 }
             }
@@ -147,12 +146,12 @@ trait ManagesServiceProvisioning
             if ($success) {
                 return ['config' => $finalConfig, 'expires_at' => $newExpiresAt];
             } else {
-                $this->handleProvisioningError('موفقیت‌آمیز نبود (Success=false) اما خطایی رخ نداد.', $isTelegramContext);
+                $this->handleProvisioningError('موفقیت‌آمیز نبود (Success=false) اما خطایی رخ نداد.');
                 return false;
             }
 
         } catch (\Exception $e) {
-            $this->handleProvisioningError("خطای سیستمی: " . $e->getMessage(), $isTelegramContext, ['trace' => $e->getTraceAsString()]);
+            $this->handleProvisioningError("خطای سیستمی: " . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
             return false;
         }
     }
@@ -160,13 +159,9 @@ trait ManagesServiceProvisioning
     /**
      * مدیریت خطاها در Trait
      */
-    protected function handleProvisioningError(string $message, bool $isTelegram, array $context = [])
+    protected function handleProvisioningError(string $message, array $context = [])
     {
         Log::error($message, $context);
-        if (!$isTelegram) {
-            // اگر در فیلامنت هستیم، نوتیفیکیشن نشان بده
-            Notification::make()->title('خطا در ساخت سرویس')->body($message)->danger()->send();
-        }
-        // اگر در تلگرام باشیم، فقط لاگ می‌اندازد و false برمی‌گرداند تا در try/catch مدیریت شود
+        Notification::make()->title('خطا در ساخت سرویس')->body($message)->danger()->send();
     }
 }

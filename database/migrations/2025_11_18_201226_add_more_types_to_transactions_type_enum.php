@@ -8,11 +8,15 @@ class AddMoreTypesToTransactionsTypeEnum extends Migration
 {
     public function up()
     {
-        \DB::statement("ALTER TABLE transactions MODIFY COLUMN type ENUM('deposit', 'purchase', 'referral_reward', 'withdraw', 'manual adjustment') DEFAULT 'deposit'");
+        if (Schema::getConnection()->getDriverName() === 'mysql') {
+            \DB::statement("ALTER TABLE transactions MODIFY COLUMN type ENUM('deposit', 'purchase', 'referral_reward', 'withdraw', 'manual adjustment') DEFAULT 'deposit'");
+        }
     }
 
     public function down()
     {
-        \DB::statement("ALTER TABLE transactions MODIFY COLUMN type ENUM('deposit', 'purchase', 'referral_reward') DEFAULT 'deposit'");
+        if (Schema::getConnection()->getDriverName() === 'mysql') {
+            \DB::statement("ALTER TABLE transactions MODIFY COLUMN type ENUM('deposit', 'purchase', 'referral_reward') DEFAULT 'deposit'");
+        }
     }
 }

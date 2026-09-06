@@ -5,9 +5,6 @@ namespace App\Providers;
 use App\Models\User;
 use Illuminate\Support\ServiceProvider;
 
-
-use Modules\Ticketing\Providers\EventServiceProvider as TicketingEventServiceProvider;
-
 class AppServiceProvider extends ServiceProvider
 {
     /**
@@ -15,8 +12,6 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        // رجیستر EventServiceProvider ماژول Ticketing
-        $this->app->register(TicketingEventServiceProvider::class);
     }
 
     /**

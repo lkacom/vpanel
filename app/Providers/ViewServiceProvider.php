@@ -11,17 +11,10 @@ class ViewServiceProvider extends ServiceProvider
 {
     public function boot(): void
     {
+        $settings = Schema::hasTable('settings')
+            ? Setting::all()->pluck('value', 'key')
+            : collect();
 
-
-
-
-        if (Schema::hasTable('settings')) {
-            $settings = Setting::all()->pluck('value', 'key');
-
-            View::share('settings', $settings);
-        }
-
-
-
+        View::share('settings', $settings);
     }
 }
