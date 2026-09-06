@@ -225,7 +225,7 @@ class OrderController extends Controller
                         $success = true;
                     }
 
-                } elseif ($panelType === 'xui') {
+                } elseif (in_array($panelType, ['sanaei', 'txui', 'xui'], true)) {
                     // پیاده‌سازی تمدید برای X-UI
                     $xuiService = new XUIService(
                         $settings->get('xui_host'),

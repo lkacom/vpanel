@@ -13,9 +13,9 @@ use Illuminate\Support\Facades\Log;
 trait ManagesServiceProvisioning
 {
     /**
-     * سرویس کاربر را در پنل مربوطه (Marzban/XUI) ایجاد یا تمدید می‌کند.
+     * سرویس کاربر را در پنل مربوطه (Marzban، Sanaei یا TX-UI) ایجاد یا تمدید می‌کند.
      *
-     * @param string $panelType نوع پنل (marzban یا xui)
+     * @param string $panelType نوع پنل (marzban، sanaei یا txui)
      * @param \Illuminate\Support\Collection $settings تنظیمات برنامه
      * @param Order $order سفارش
      * @return array|false آرایه‌ای شامل ['config' => $config, 'expires_at' => $expires_at] در صورت موفقیت، یا false در صورت شکست
@@ -79,7 +79,7 @@ trait ManagesServiceProvisioning
                     return false;
                 }
 
-            } elseif ($panelType === 'xui') {
+            } elseif (in_array($panelType, ['sanaei', 'txui', 'xui'], true)) {
                 $inboundId = $settings->get('xui_default_inbound_id');
                 if (!$inboundId) {
                     $this->handleProvisioningError('اینباند XUI در تنظیمات ست نشده.'); return false;

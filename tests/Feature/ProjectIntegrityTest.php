@@ -4,10 +4,12 @@ use App\Filament\Resources\OrderResource;
 use App\Filament\Resources\PaymentsResource;
 use App\Models\Order;
 use App\Models\User;
+use App\Filament\Pages\VpnSettings;
 use App\Traits\ManagesServiceProvisioning;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Livewire\Livewire;
 use Modules\Ticketing\Filament\Resources\TicketResource;
 
 it('keeps the core admin resources available after Telegram removal', function () {
@@ -42,6 +44,12 @@ it('creates an admin account that can authenticate with the configured credentia
         ]))->toBeTrue();
 
     Auth::logout();
+});
+
+it('shows separate Sanaei and TX-UI choices in initial panel setup', function () {
+    Livewire::test(VpnSettings::class)
+        ->assertSee('سنایی (3X-UI)')
+        ->assertSee('TX-UI');
 });
 
 it('reports invalid service orders through the normal admin notification flow', function () {
