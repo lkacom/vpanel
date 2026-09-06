@@ -3,7 +3,11 @@
 use App\Filament\Resources\OrderResource;
 use App\Filament\Resources\PaymentsResource;
 use App\Models\Order;
+use App\Models\User;
 use App\Traits\ManagesServiceProvisioning;
+use Database\Seeders\DatabaseSeeder;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Modules\Ticketing\Filament\Resources\TicketResource;
 
 it('keeps the core admin resources available after Telegram removal', function () {
@@ -22,6 +26,22 @@ it('preserves the login csrf token across separate requests', function () {
     ]);
 
     expect($response->status())->not->toBe(419);
+});
+
+it('creates an admin account that can authenticate with the configured credentials', function () {
+    $this->seed(DatabaseSeeder::class);
+
+    $admin = User::where('email', env('ADMIN_EMAIL', 'admin@example.com'))->first();
+
+    expect($admin)->not->toBeNull()
+        ->and($admin->is_admin)->toBeTrue()
+        ->and(Hash::check(env('ADMIN_PASSWORD', 'admin'), $admin->password))->toBeTrue()
+        ->and(Auth::attempt([
+            'email' => env('ADMIN_EMAIL', 'admin@example.com'),
+            'password' => env('ADMIN_PASSWORD', 'admin'),
+        ]))->toBeTrue();
+
+    Auth::logout();
 });
 
 it('reports invalid service orders through the normal admin notification flow', function () {
