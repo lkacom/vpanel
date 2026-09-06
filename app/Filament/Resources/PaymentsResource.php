@@ -28,7 +28,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Morilog\Jalali\Jalalian;
-use Telegram\Bot\Laravel\Facades\Telegram;
 
 class PaymentsResource extends Resource
 {
@@ -115,4 +114,3 @@ class PaymentsResource extends Resource
 
     }
 }
-

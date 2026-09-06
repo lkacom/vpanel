@@ -11,11 +11,10 @@
         "doctrine/dbal": "^4.3",
         "filament/filament": "^3.2",
         "guzzlehttp/guzzle": "^7.10",
-        "irazasyed/telegram-bot-sdk": "^3.15",
         "laravel/framework": "^12.0",
         "laravel/tinker": "^2.10.1",
         "morilog/jalali": "^3.4",
-        "nwidart/laravel-modules": "*",
+        "nwidart/laravel-modules": "^12.0",
         "simplesoftwareio/simple-qrcode": "^4.2"
     },
     "require-dev": {
@@ -38,7 +37,6 @@
             "Database\\Seeders\\": "database/seeders/"
         },
         "files": [
-            "app/Helpers/TelegramHelper.php",
             "app/helpers.php"
         ]
     },
@@ -59,7 +57,6 @@
         ],
         "post-create-project-cmd": [
             "@php artisan key:generate --ansi",
-            "@php -r \"file_exists('database/database.sqlite') || touch('database/database.sqlite');\"",
             "@php artisan migrate --graceful --ansi"
         ],
         "dev": [

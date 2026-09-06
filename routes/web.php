@@ -9,7 +9,6 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
 use App\Http\Controllers\WebhookController as NowPaymentsWebhookController;
-use Modules\TelegramBot\Http\Controllers\WebhookController as TelegramWebhookController;
 
 /*
 |--------------------------------------------------------------------------
@@ -116,7 +115,6 @@ Route::middleware(['auth'])->group(function () {
 });
 
 Route::post('/webhooks/nowpayments', [NowPaymentsWebhookController::class, 'handle'])->name('webhooks.nowpayments');
-Route::post('/webhooks/telegram', [TelegramWebhookController::class, 'handle'])->name('webhooks.telegram');
 
 
 /* BREEZE AUTHENTICATION */

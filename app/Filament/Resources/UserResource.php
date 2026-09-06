@@ -4,18 +4,14 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\UserResource\Pages;
 use App\Models\User;
-use App\Models\Setting;
-use Modules\TelegramBot\Http\Controllers\WebhookController;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
-use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Tables\Table;
 use Filament\Tables\Actions\Action;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Log;
 use App\Models\Transaction;
 use Illuminate\Support\Facades\DB;
 use Morilog\Jalali\Jalalian;
@@ -79,41 +75,6 @@ class UserResource extends Resource
             ->actions([
                 Tables\Actions\EditAction::make()->button()->label(''),
                 Tables\Actions\DeleteAction::make()->button()->label(''),
-
-
-
-
-
-                // اکشن ارسال پیام به تلگرام
-                Action::make('send_telegram_message')
-                    ->label('پیام تلگرام')
-                    ->icon('heroicon-o-chat-bubble-left-right')
-                    ->color('info')
-                    ->modalHeading(fn (User $record) => 'ارسال پیام به ' . $record->name)
-                    ->visible(fn (User $record): bool => (bool)$record->telegram_chat_id)
-                    ->form([
-                        Textarea::make('message')
-                            ->label('متن پیام')
-                            ->required()
-                            ->rows(5)
-                            ->maxLength(4096),
-                    ])
-                    ->action(function (User $record, array $data) {
-                        $chatId = $record->telegram_chat_id;
-                        if (!$chatId) {
-                            Notification::make()->title('خطا')->body('کاربر Chat ID تلگرام ندارد.')->danger()->send();
-                            return;
-                        }
-                        $webhookController = new WebhookController();
-                        $success = $webhookController->sendSingleMessageToUser($chatId, $data['message']);
-                        if ($success) {
-                            Notification::make()->title('موفقیت')->body('پیام با موفقیت به تلگرام کاربر ارسال شد.')->success()->send();
-                        } else {
-                            Notification::make()->title('خطا در ارسال')->body('ارسال پیام به تلگرام ناموفق بود. (چک کردن لاگ‌ها)')->danger()->send();
-                        }
-                    }),
-
-
 
                 Tables\Actions\Action::make('adjust_wallet')
                     ->label('تنظیم کیف پول')
@@ -179,20 +140,6 @@ class UserResource extends Resource
                                 'description' => "تنظیم دستی توسط ادمین: {$description}",
                                 'payment_method' => 'manual_admin',
                             ]);
-
-                            if ($record->telegram_chat_id) {
-                                $webhookController = new WebhookController();
-                                $action = $amount >= 0 ? 'افزوده شد' : 'کسر شد';
-                                $emoji = $amount > 0 ? '✅' : '⚠️';
-
-                                $message = "{$emoji} *تغییر موجودی کیف پول*\n\n";
-                                $message .= "▫️ مبلغ: *" . number_format(abs($amount)) . "* تومان {$action}\n";
-                                $message .= "▫️ موجودی جدید: *" . number_format($record->balance) . "* تومان\n\n";
-                                $message .= "💬 توضیحات: _{$description}_\n\n";
-                                $message .= "👤 توسط: *مدیریت*";
-
-                                $webhookController->sendSingleMessageToUser($record->telegram_chat_id, $message);
-                            }
                         });
 
                         Notification::make()

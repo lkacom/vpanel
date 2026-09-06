@@ -3,7 +3,6 @@
 namespace Modules\Ticketing\Filament\Resources\TicketResource\Pages;
 
 use Modules\Ticketing\Filament\Resources\TicketResource;
-use Modules\Ticketing\Events\TicketReplied;
 use Filament\Actions;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Forms\Components\Textarea;
@@ -74,8 +73,6 @@ class ViewTicket extends ViewRecord
                     ]);
 
                     $this->getRecord()->update(['status' => 'answered']);
-
-                    TicketReplied::dispatch($reply);
 
                     Notification::make()->title('پاسخ با موفقیت ارسال شد.')->success()->send();
                 }),

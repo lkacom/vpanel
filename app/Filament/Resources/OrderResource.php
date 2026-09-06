@@ -32,9 +32,7 @@ use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use Telegram\Bot\Laravel\Facades\Telegram;
 
 class OrderResource extends Resource
 {
@@ -109,7 +107,7 @@ class OrderResource extends Resource
     {
         return $table
             ->columns([
-                IconColumn::make('source')->label('منبع')->toggleable()->icon(fn (?string $state): string => match ($state) { 'web' => 'heroicon-o-globe-alt', 'telegram' => 'heroicon-o-paper-airplane', default => 'heroicon-o-question-mark-circle' })->color(fn (?string $state): string => match ($state) { 'web' => 'primary', 'telegram' => 'info', default => 'gray' }),
+                IconColumn::make('source')->label('منبع')->toggleable()->icon(fn (?string $state): string => match ($state) { 'web' => 'heroicon-o-globe-alt', default => 'heroicon-o-question-mark-circle' })->color(fn (?string $state): string => match ($state) { 'web' => 'primary', default => 'gray' }),
 
                 ImageColumn::make('card_payment_receipt')->label('رسید')->disk('public')->toggleable()->size(60)->url(fn (Order $record): ?string => $record->card_payment_receipt ? Storage::disk('public')->url($record->card_payment_receipt) : null)->openUrlInNewTab(),
                 Tables\Columns\TextColumn::make('user.name')->label('کاربر')->searchable()->sortable(),
@@ -171,7 +169,7 @@ class OrderResource extends Resource
             ->defaultSort('created_at', 'desc')
             ->filters([
                 Tables\Filters\SelectFilter::make('status')->label('وضعیت')->options(['pending' => 'در انتظار پرداخت', 'paid' => 'پرداخت شده', 'expired' => 'منقضی شده']),
-                Tables\Filters\SelectFilter::make('source')->label('منبع')->options(['web' => 'وب‌سایت', 'telegram' => 'تلگرام']),
+                Tables\Filters\SelectFilter::make('source')->label('منبع')->options(['web' => 'وب‌سایت']),
             ])
             ->actions([
 
@@ -195,24 +193,6 @@ class OrderResource extends Resource
 
 
                                 Notification::make()->title('کیف پول کاربر با موفقیت شارژ شد.')->success()->send();
-
-
-                                if ($user->telegram_chat_id) {
-                                    try {
-                                        $telegramMessage = "✅ کیف پول شما به مبلغ *" . number_format($order->amount) . " تومان* با موفقیت شارژ شد.\n\n";
-                                        $telegramMessage .= "موجودی جدید شما: *" . number_format($user->fresh()->balance) . " تومان*";
-
-                                        Telegram::setAccessToken($settings->get('telegram_bot_token'));
-                                        Telegram::sendMessage([
-                                            'chat_id' => $user->telegram_chat_id,
-                                            'text' => $telegramMessage,
-                                            'parse_mode' => 'Markdown'
-                                        ]);
-                                    } catch (\Exception $e) {
-                                        Log::error('Failed to send wallet charge notification via Telegram: ' . $e->getMessage());
-                                    }
-                                }
-
                                 return;
                             }
 
@@ -347,18 +327,6 @@ class OrderResource extends Resource
                                 Transaction::create(['user_id' => $user->id, 'order_id' => $order->id, 'amount' => $plan->price, 'type' => 'purchase', 'status' => 'completed', 'description' => $description]);
                                 OrderPaid::dispatch($order);
                                 Notification::make()->title('عملیات با موفقیت انجام شد.')->success()->send();
-
-                                if ($user->telegram_chat_id) {
-                                    try {
-                                        $telegramMessage = $isRenewal
-                                            ? "✅ سرویس شما (*{$plan->name}*) با موفقیت تمدید شد.\n\n❗️*نکته مهم:* لینک اشتراک شما تغییر کرده است. لطفاً لینک جدید زیر را کپی و در نرم‌افزار خود آپدیت کنید:\n\n`" . $finalConfig . "`"
-                                            : "✅ سرویس شما (*{$plan->name}*) با موفقیت فعال شد.\n\nاطلاعات کانفیگ شما:\n`" . $finalConfig . "`\n\nمی‌توانید لینک بالا را کپی کرده و در نرم‌افزار خود import کنید.";
-                                        Telegram::setAccessToken($settings->get('telegram_bot_token'));
-                                        Telegram::sendMessage(['chat_id' => $user->telegram_chat_id, 'text' => $telegramMessage, 'parse_mode' => 'Markdown']);
-                                    } catch (\Exception $e) {
-                                        Log::error('Failed to send Telegram notification: ' . $e->getMessage());
-                                    }
-                                }
                             }
                         });
                     }),

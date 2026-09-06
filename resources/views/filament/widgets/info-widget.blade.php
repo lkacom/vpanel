@@ -50,7 +50,6 @@
                     color="gray"
                     href="https://forum.iranli.com/t/github"
                     icon="heroicon-m-users"
-                    icon-alias="panels::widgets.filament-info.join-telegram-button"
                     rel="noopener noreferrer"
                     target="_blank"
                 >
@@ -63,4 +62,3 @@
         </div>
     </x-filament::section>
 </x-filament-widgets::widget>
-
