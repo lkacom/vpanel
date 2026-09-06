@@ -12,6 +12,18 @@ it('keeps the core admin resources available after Telegram removal', function (
         ->and(TicketResource::getNavigationLabel())->toBeString()->not->toBeEmpty();
 });
 
+it('preserves the login csrf token across separate requests', function () {
+    $this->get(route('login'))->assertOk();
+
+    $response = $this->post(route('login'), [
+        '_token' => session()->token(),
+        'email' => 'invalid@example.com',
+        'password' => 'invalid-password',
+    ]);
+
+    expect($response->status())->not->toBe(419);
+});
+
 it('reports invalid service orders through the normal admin notification flow', function () {
     $provisioner = new class {
         use ManagesServiceProvisioning;
