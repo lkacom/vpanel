@@ -121,7 +121,7 @@ FLUSH PRIVILEGES;
 سپس فایل محیط تست را بسازید و تست‌ها را در ریشهٔ پروژه اجرا کنید:
 
 ```bash
-cp .env.testing.example .env.testing
+cp .env.example .env.testing
 composer install
 php artisan key:generate --env=testing
 php artisan test
