@@ -14,8 +14,7 @@
 
 
                 <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                    فورکی از نسخه  VPNMarket
-                </p>
+پنل مدیریت v2ray                </p>
             </div>
 
             <div class="flex flex-col items-start gap-y-1">
