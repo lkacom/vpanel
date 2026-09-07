@@ -45,6 +45,10 @@ class VpnSettings extends Page implements HasForms
             }
         }
 
+        if (($settings['panel_type'] ?? null) === 'xui') {
+            $settings['panel_type'] = 'sanaei';
+        }
+
         $this->form->fill(array_merge([
             'panel_type' => 'marzban',
             'xui_host' => null,
@@ -72,7 +76,8 @@ class VpnSettings extends Page implements HasForms
                             ->label('نوع پنل')
                             ->options([
                                 'marzban' => 'مرزبان',
-                                'xui' => 'سنایی / TX-UI',
+                                'sanaei' => 'سنایی (3X-UI)',
+                                'txui' => 'TX-UI',
                             ])
                             ->live()
                             ->required(),
@@ -90,25 +95,25 @@ class VpnSettings extends Page implements HasForms
                                 TextInput::make('marzban_node_hostname')->label('آدرس دامنه/سرور برای کانفیگ'),
                             ]),
 
-                        Section::make('تنظیمات پنل X-UI')
-                            ->visible(fn (Get $get) => $get('panel_type') === 'xui')
+                        Section::make('تنظیمات پنل سنایی / TX-UI')
+                            ->visible(fn (Get $get) => in_array($get('panel_type'), ['sanaei', 'txui'], true))
                             ->schema([
                                 TextInput::make('xui_host')
                                     ->label('آدرس کامل پنل')
-                                    ->required(fn (Get $get): bool => $get('panel_type') === 'xui'),
+                                    ->required(fn (Get $get): bool => in_array($get('panel_type'), ['sanaei', 'txui'], true)),
                                 TextInput::make('xui_user')
                                     ->label('نام کاربری')
-                                    ->required(fn (Get $get): bool => $get('panel_type') === 'xui'),
+                                    ->required(fn (Get $get): bool => in_array($get('panel_type'), ['sanaei', 'txui'], true)),
                                 TextInput::make('xui_pass')
                                     ->label('رمز عبور')
                                     ->password()
-                                    ->required(fn (Get $get): bool => $get('panel_type') === 'xui'),
+                                    ->required(fn (Get $get): bool => in_array($get('panel_type'), ['sanaei', 'txui'], true)),
 
                                 Radio::make('xui_link_type')
                                     ->label('نوع لینک تحویلی')
                                     ->options(['single' => 'لینک تکی', 'subscription' => 'لینک سابسکریپشن'])
                                     ->default('single')
-                                    ->required(fn (Get $get): bool => $get('panel_type') === 'xui'),
+                                    ->required(fn (Get $get): bool => in_array($get('panel_type'), ['sanaei', 'txui'], true)),
 
                                 TextInput::make('xui_subscription_url_base')
                                     ->label('آدرس پایه لینک سابسکریپشن'),
@@ -190,6 +195,11 @@ class VpnSettings extends Page implements HasForms
                 $panelType = $formData['panel_type'] ?? null;
 
                 if ($panelType === 'xui') {
+                    $panelType = 'sanaei';
+                    $formData['panel_type'] = $panelType;
+                }
+
+                if (in_array($panelType, ['sanaei', 'txui'], true)) {
                     $xui = new XUIService(
                         $formData['xui_host'] ?? null,
                         $formData['xui_user'] ?? null,

@@ -223,7 +223,7 @@ class OrderResource extends Resource
                                     Notification::make()->title('خطا در ارتباط با مرزبان')->body($response['detail'] ?? 'پاسخ نامعتبر.')->danger()->send();
                                     return;
                                 }
-                            } elseif ($panelType === 'xui') {
+                            } elseif (in_array($panelType, ['sanaei', 'txui', 'xui'], true)) {
                                 if ($isRenewal) {
                                     Notification::make()->title('خطا')->body('تمدید خودکار برای پنل سنایی هنوز پیاده‌سازی نشده است.')->danger()->send();
                                     return;
