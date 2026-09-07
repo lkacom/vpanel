@@ -9,7 +9,7 @@
                     target="_blank"
                     class="block text-xl font-bold text-gray-950 dark:text-white rtl:divide-x-reverse"
                 >
-                     پنل مدیریت و فروش VPanel
+                     کنترل پنل VPanel
                 </a>
 
 
