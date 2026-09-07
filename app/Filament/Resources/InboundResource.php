@@ -62,7 +62,7 @@ class InboundResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->description('اطلاعات این صفحه به صورت خودکار از سرور X-UI دریافت خواهد شد.')
+            ->description('اطلاعات این صفحه به صورت خودکار از سرور V2ray دریافت خواهد شد.')
             ->columns([
                 Tables\Columns\TextColumn::make('title')
                     ->label('عنوان'),

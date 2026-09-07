@@ -25,7 +25,7 @@ class VpnSettings extends Page implements HasForms
 
     protected static ?string $navigationIcon = 'heroicon-o-key';
     protected static string $view = 'filament.pages.vpn-settings';
-    protected static ?string $navigationLabel = 'راه اندازی اولیه پنل ';
+    protected static ?string $navigationLabel = 'افزودن سرور v2ray';
     protected static ?string $title = 'تنظیمات اولیه پنل V2Ray';
     protected static ?string $navigationGroup = 'تنظیمات';
 
@@ -77,7 +77,7 @@ class VpnSettings extends Page implements HasForms
                             ->options([
                                 'marzban' => 'مرزبان',
                                 'sanaei' => 'سنایی (3X-UI)',
-                                'txui' => 'TX-UI',
+                                'txui' => 'پنل علیرضا (x-ui/tx-ui)',
                             ])
                             ->live()
                             ->required(),
@@ -95,7 +95,7 @@ class VpnSettings extends Page implements HasForms
                                 TextInput::make('marzban_node_hostname')->label('آدرس دامنه/سرور برای کانفیگ'),
                             ]),
 
-                        Section::make('تنظیمات پنل سنایی / TX-UI')
+                        Section::make('تنظیمات پنل علیرضا / TX-UI')
                             ->visible(fn (Get $get) => in_array($get('panel_type'), ['sanaei', 'txui'], true))
                             ->schema([
                                 TextInput::make('xui_host')

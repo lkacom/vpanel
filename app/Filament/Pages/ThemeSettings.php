@@ -26,7 +26,7 @@ class ThemeSettings extends Page implements HasForms
 
     protected static ?string $navigationIcon = 'heroicon-o-cog-6-tooth';
     protected static string $view = 'filament.pages.theme-settings';
-    protected static ?string $navigationLabel = 'پیکربندی اصلی';
+    protected static ?string $navigationLabel = 'پیکربندی ';
     protected static ?string $title = 'تنظیمات قالب و محتوای سایت';
     protected static ?string $navigationGroup = 'تنظیمات';
 
