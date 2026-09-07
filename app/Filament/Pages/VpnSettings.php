@@ -84,7 +84,7 @@ class VpnSettings extends Page implements HasForms
                     ]),
 
                 /* مرحله ۲ — تنظیمات اتصال */
-                Wizard\Step::make('اتصال پنل V2Ray به  VPanel')
+                Wizard\Step::make('مشخصات سرور')
                     ->schema([
                         Section::make('تنظیمات پنل مرزبان')
                             ->visible(fn (Get $get) => $get('panel_type') === 'marzban')
