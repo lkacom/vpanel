@@ -136,7 +136,7 @@ class ThemeSettings extends Page implements HasForms
                     ]),
 
                     Tabs\Tab::make('محتوای صفحات ورود')->icon('heroicon-o-key')->schema([
-                        Section::make('متن‌های عمومی')->schema([TextInput::make('auth_brand_name')->label('نام برند')->placeholder('VPNMarket'),]),
+                        Section::make('متن‌های عمومی')->schema([TextInput::make('auth_brand_name')->label('نام برند')->placeholder('Vpanel'),]),
                         Section::make('صفحه ورود (Login)')->schema([
                             TextInput::make('auth_login_title')->label('عنوان فرم ورود'),
                             TextInput::make('auth_login_email_placeholder')->label('متن داخل فیلد ایمیل'),
