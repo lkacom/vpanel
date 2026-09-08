@@ -16,6 +16,7 @@ use Filament\Forms\Form;
 use Filament\Forms\Get;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Filament\Support\Exceptions\Halt;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
@@ -120,7 +121,9 @@ class VpnSettings extends Page implements HasForms
                             ]),
                     ])
                     ->afterValidation(function () {
-                        $this->submit(initialSave: true);
+                        if (!$this->submit(initialSave: true)) {
+                            throw new Halt;
+                        }
                     }),
 
                 /* مرحله ۳ — انتخاب ورودی پیش‌فرض */
@@ -183,7 +186,7 @@ class VpnSettings extends Page implements HasForms
      * 1. initialSave = true → مرحله ۲ ذخیره + Sync
      * 2. مرحله پایانی → ذخیره نهایی ورودی پیش‌فرض
      */
-    public function submit(bool $initialSave = false): void
+    public function submit(bool $initialSave = false): bool
     {
         try {
             $this->form->validate();
@@ -212,7 +215,7 @@ class VpnSettings extends Page implements HasForms
                             ->body('نام کاربری یا رمز عبور اشتباه است یا سرور در دسترس نیست.')
                             ->danger()
                             ->send();
-                        return;
+                        return false;
                     }
 
                     $inbounds = $xui->getInbounds();
@@ -222,7 +225,7 @@ class VpnSettings extends Page implements HasForms
                             ->body('سرور در دسترس نیست یا اینباندی موجود نیست.')
                             ->danger()
                             ->send();
-                        return;
+                        return false;
                     }
                     Inbound::truncate();
                     foreach ($formData as $key => $value) {
@@ -271,7 +274,7 @@ class VpnSettings extends Page implements HasForms
                         ->send();
                 }
 
-                return;
+                return true;
             }
 
             /* ذخیره نهایی مرحله آخر */
@@ -286,6 +289,8 @@ class VpnSettings extends Page implements HasForms
                 ->success()
                 ->send();
 
+            return true;
+
         } catch (\Illuminate\Validation\ValidationException $e) {
             Notification::make()
                 ->title('خطا در اعتبارسنجی')
@@ -294,6 +299,7 @@ class VpnSettings extends Page implements HasForms
                 ->send();
 
             Log::error('Validation failed: ' . json_encode($e->errors()));
+            return false;
         } catch (\Exception $e) {
             Log::error('Panel configuration failed: ' . $e->getMessage());
             Notification::make()
@@ -301,6 +307,7 @@ class VpnSettings extends Page implements HasForms
                 ->body($e->getMessage())
                 ->danger()
                 ->send();
+            return false;
         }
     }
 }

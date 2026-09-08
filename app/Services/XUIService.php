@@ -19,13 +19,20 @@ class XUIService
 
     public function __construct(string $host, string $username, string $password)
     {
-        $parsedUrl = parse_url(rtrim($host, '/'));
-        $this->baseUrl = ($parsedUrl['scheme'] ?? 'http') . '://' . $parsedUrl['host'] . (isset($parsedUrl['port']) ? ':' . $parsedUrl['port'] : '');
-        $this->basePath = $parsedUrl['path'] ?? '';
-
-        if (!empty($this->basePath) && !str_starts_with($this->basePath, '/')) {
-            $this->basePath = '/' . $this->basePath;
+        $normalizedHost = trim($host);
+        if (!preg_match('/^https?:\/\//i', $normalizedHost)) {
+            $normalizedHost = 'http://' . $normalizedHost;
         }
+
+        $parsedUrl = parse_url(rtrim($normalizedHost, '/'));
+        $scheme = strtolower($parsedUrl['scheme'] ?? 'http');
+        $hostname = $parsedUrl['host'] ?? null;
+        if (!$hostname) {
+            throw new \InvalidArgumentException('آدرس پنل سنایی معتبر نیست.');
+        }
+
+        $this->baseUrl = $scheme . '://' . $hostname . (isset($parsedUrl['port']) ? ':' . $parsedUrl['port'] : '');
+        $this->basePath = rtrim($parsedUrl['path'] ?? '', '/');
 
         $this->username = $username;
         $this->password = $password;
@@ -107,12 +114,22 @@ class XUIService
             ]);
 
             $responseBody = $response->body();
+            $responseJson = $response->json();
+            $hasExplicitSuccess = is_array($responseJson) && array_key_exists('success', $responseJson);
+            $successValue = $responseJson['success'] ?? null;
+            $success = $successValue === true || $successValue === 1 || $successValue === '1' || $successValue === 'true';
+            $message = (string) ($response->json('msg') ?? $response->json('message') ?? '');
+            $hasSuccessMessage = Str::contains(strtolower($message), [
+                'login successful',
+                'success',
+                'موفق',
+                '登录成功',
+                '登陆成功',
+            ]);
             $isSuccess = $response->successful() && (
-                    $response->json('success') === true ||
-                    Str::contains($responseBody, 'Login successful') ||
-                    Str::contains($responseBody, 'success') ||
-                    $response->redirect()
-                );
+                ($hasExplicitSuccess && $success) ||
+                (!$hasExplicitSuccess && $hasSuccessMessage)
+            );
 
             if ($isSuccess) {
                 Log::info('XUI Login successful');

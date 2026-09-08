@@ -5,10 +5,12 @@ use App\Filament\Resources\PaymentsResource;
 use App\Models\Order;
 use App\Models\User;
 use App\Filament\Pages\VpnSettings;
+use App\Services\XUIService;
 use App\Traits\ManagesServiceProvisioning;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
 use Livewire\Livewire;
 use Modules\Ticketing\Filament\Resources\TicketResource;
 
@@ -50,6 +52,18 @@ it('shows separate Sanaei and TX-UI choices in initial panel setup', function ()
     Livewire::test(VpnSettings::class)
         ->assertSee('سنایی (3X-UI)')
         ->assertSee('TX-UI');
+});
+
+it('accepts the standard Sanaei login response and rejects an explicit failure', function () {
+    Http::fake([
+        'https://sanaei.test/*' => Http::response(['success' => true, 'msg' => '登录成功'], 200, [
+            'Set-Cookie' => 'session=valid; Path=/',
+        ]),
+        'https://invalid-sanaei.test/*' => Http::response(['success' => false, 'msg' => '用户名或密码错误'], 200),
+    ]);
+
+    expect((new XUIService('https://sanaei.test', 'admin', 'correct-password'))->login())->toBeTrue();
+    expect((new XUIService('https://invalid-sanaei.test/base', 'admin', 'wrong-password'))->login())->toBeFalse();
 });
 
 it('reports invalid service orders through the normal admin notification flow', function () {
