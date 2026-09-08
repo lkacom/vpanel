@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Models\User;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -19,6 +20,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Keep indexed UTF-8 strings compatible with MySQL/MariaDB servers
+        // that enforce the legacy 1000-byte index limit.
+        Schema::defaultStringLength(191);
+
         User::creating(function ($user) {
             do {
                 $code = 'REF-' . strtoupper(\Illuminate\Support\Str::random(6));
