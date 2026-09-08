@@ -6,6 +6,7 @@ use App\Models\Order;
 use App\Models\User;
 use App\Filament\Pages\VpnSettings;
 use App\Services\XUIService;
+use App\Services\MarzbanService;
 use App\Traits\ManagesServiceProvisioning;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Support\Facades\Auth;
@@ -51,7 +52,7 @@ it('creates an admin account that can authenticate with the configured credentia
 it('shows separate Sanaei and TX-UI choices in initial panel setup', function () {
     Livewire::test(VpnSettings::class)
         ->assertSee('سنایی (3X-UI)')
-        ->assertSee('TX-UI');
+        ->assertSee('پنل علیرضا (x-ui/tx-ui)');
 });
 
 it('accepts the standard Sanaei login response and rejects an explicit failure', function () {
@@ -64,6 +65,20 @@ it('accepts the standard Sanaei login response and rejects an explicit failure',
 
     expect((new XUIService('https://sanaei.test', 'admin', 'correct-password'))->login())->toBeTrue();
     expect((new XUIService('https://invalid-sanaei.test/base', 'admin', 'wrong-password'))->login())->toBeFalse();
+
+    Http::assertSent(fn ($request) => $request->url() === 'https://sanaei.test/login'
+        && $request->data()['username'] === 'admin'
+        && $request->data()['password'] === 'correct-password');
+});
+
+it('accepts a Marzban token and rejects a missing token', function () {
+    Http::fake([
+        'https://marzban.test/api/admin/token' => Http::response(['access_token' => 'token'], 200),
+        'https://invalid-marzban.test/api/admin/token' => Http::response(['detail' => 'Invalid credentials'], 401),
+    ]);
+
+    expect((new MarzbanService('https://marzban.test', 'admin', 'correct-password', 'node.test'))->login())->toBeTrue()
+        ->and((new MarzbanService('https://invalid-marzban.test', 'admin', 'wrong-password', 'node.test'))->login())->toBeFalse();
 });
 
 it('reports invalid service orders through the normal admin notification flow', function () {

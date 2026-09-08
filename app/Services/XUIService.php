@@ -108,28 +108,24 @@ class XUIService
         try {
             $loginApiUrl = $this->baseUrl . $this->basePath . '/login';
 
-            $response = $this->getClient()->asForm()->post($loginApiUrl, [
+            $response = $this->getClient()->asJson()->acceptJson()->post($loginApiUrl, [
                 'username' => $this->username,
                 'password' => $this->password,
             ]);
 
-            $responseBody = $response->body();
-            $responseJson = $response->json();
-            $hasExplicitSuccess = is_array($responseJson) && array_key_exists('success', $responseJson);
-            $successValue = $responseJson['success'] ?? null;
-            $success = $successValue === true || $successValue === 1 || $successValue === '1' || $successValue === 'true';
-            $message = (string) ($response->json('msg') ?? $response->json('message') ?? '');
-            $hasSuccessMessage = Str::contains(strtolower($message), [
-                'login successful',
-                'success',
-                'موفق',
-                '登录成功',
-                '登陆成功',
-            ]);
-            $isSuccess = $response->successful() && (
-                ($hasExplicitSuccess && $success) ||
-                (!$hasExplicitSuccess && $hasSuccessMessage)
-            );
+            $loginResult = $this->parseLoginResponse($response);
+
+            // نسخه‌های قدیمی x-ui فرم را می‌پذیرند؛ فقط وقتی پاسخ JSON
+            // وضعیت مشخصی ندارد fallback می‌کنیم تا رمز اشتباه دوباره تفسیر نشود.
+            if ($loginResult === null) {
+                $response = $this->getClient()->asForm()->acceptJson()->post($loginApiUrl, [
+                    'username' => $this->username,
+                    'password' => $this->password,
+                ]);
+                $loginResult = $this->parseLoginResponse($response);
+            }
+
+            $isSuccess = $loginResult === true;
 
             if ($isSuccess) {
                 Log::info('XUI Login successful');
@@ -139,7 +135,7 @@ class XUIService
                 Log::error('XUI Login Failed', [
                     'url' => $loginApiUrl,
                     'status' => $response->status(),
-                    'body' => $responseBody,
+                    'body' => $response->body(),
                     'json' => $response->json()
                 ]);
                 return false;
@@ -184,6 +180,33 @@ class XUIService
             ]);
             return [];
         }
+    }
+
+    private function parseLoginResponse($response): ?bool
+    {
+        if (!$response->successful()) {
+            return false;
+        }
+
+        $responseJson = $response->json();
+        if (is_array($responseJson) && array_key_exists('success', $responseJson)) {
+            $successValue = $responseJson['success'];
+            return $successValue === true || $successValue === 1 || $successValue === '1' || $successValue === 'true';
+        }
+
+        $message = (string) ($response->json('msg') ?? $response->json('message') ?? '');
+        if ($message === '') {
+            return null;
+        }
+
+        return Str::contains(strtolower($message), [
+            'login successful',
+            'logged in successfully',
+            'success',
+            'موفق',
+            '登录成功',
+            '登陆成功',
+        ]);
     }
 
     public function addClient(int $inboundId, array $clientData): ?array

@@ -15,6 +15,11 @@ class MarzbanService
 
     public function __construct(string $baseUrl, string $username, string $password, string $nodeHostname)
     {
+        $baseUrl = trim($baseUrl);
+        if (!preg_match('/^https?:\/\//i', $baseUrl)) {
+            $baseUrl = 'http://' . $baseUrl;
+        }
+
         $this->baseUrl = rtrim($baseUrl, '/');
         $this->username = $username;
         $this->password = $password;
@@ -31,10 +36,15 @@ class MarzbanService
                 'password' => $this->password,
             ]);
 
-            if ($response->successful() && isset($response->json()['access_token'])) {
-                $this->accessToken = $response->json()['access_token'];
+            $token = $response->json('access_token');
+            if ($response->successful() && is_string($token) && $token !== '') {
+                $this->accessToken = $token;
                 return true;
             }
+            Log::warning('Marzban Login Failed', [
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
             return false;
         } catch (\Exception $e) {
             Log::error('Marzban Login Exception:', ['message' => $e->getMessage()]);

@@ -5,6 +5,7 @@ namespace App\Filament\Pages;
 use App\Models\Inbound;
 use App\Models\Setting;
 use App\Services\XUIService;
+use App\Services\MarzbanService;
 use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
@@ -262,6 +263,22 @@ class VpnSettings extends Page implements HasForms
                         ->send();
 
                 } elseif ($panelType === 'marzban') {
+                    $marzban = new MarzbanService(
+                        $formData['marzban_host'] ?? '',
+                        $formData['marzban_sudo_username'] ?? '',
+                        $formData['marzban_sudo_password'] ?? '',
+                        $formData['marzban_node_hostname'] ?? ''
+                    );
+
+                    if (!$marzban->login()) {
+                        Notification::make()
+                            ->title('خطا در اتصال به مرزبان')
+                            ->body('نام کاربری یا رمز عبور مرزبان صحیح نیست یا آدرس پنل در دسترس نمی‌باشد.')
+                            ->danger()
+                            ->send();
+                        return false;
+                    }
+
                     foreach ($formData as $key => $value) {
                         Setting::updateOrCreate(['key' => $key], ['value' => $value ?? '']);
                     }
