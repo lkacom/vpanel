@@ -38,7 +38,7 @@ class PaymentsResource extends Resource
     protected static ?string $navigationLabel = 'تاریخچه تراکنش ها';
     protected static ?string $modelLabel = 'تراکنش';
     protected static ?string $pluralModelLabel = ' تراکنش های مالی';
-    protected static ?string $navigationGroup = 'مدیریت محصولات';
+    protected static ?string $navigationGroup = 'مدیریت مالی';
 
     public static function form(Form $form): Form
     {
