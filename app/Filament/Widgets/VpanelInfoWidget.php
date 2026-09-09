@@ -5,7 +5,7 @@ namespace App\Filament\Widgets;
 
 use Filament\Widgets\Widget;
 
-class VpnMarketInfoWidget extends Widget
+class VpanelInfoWidget extends Widget
 {
     protected static ?int $sort = -2;
     protected int|string|array $columnSpan = 12;

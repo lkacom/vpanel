@@ -2,7 +2,7 @@
 
 
 namespace App\Providers\Filament;
-use App\Filament\Widgets\VpnMarketInfoWidget;
+use App\Filament\Widgets\VpanelInfoWidget;
 use Filament\Navigation\NavigationGroup;
 use Filament\Support\Enums\MaxWidth;
 use Filament\Widgets\AccountWidget;
@@ -61,7 +61,7 @@ class AdminPanelProvider extends PanelProvider
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->widgets([
 
-                VpnMarketInfoWidget::class,
+                VpanelInfoWidget::class,
 
 
             ])
