@@ -2,12 +2,10 @@
 
 namespace App\Filament\Resources;
 
+use Filament\Actions;
+
 use App\Filament\Resources\InboundResource\Pages;
 use App\Models\Inbound;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteAction;
-use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\EditAction;
 use Filament\Forms;
 use Filament\Schemas\Schema;
 use Filament\Notifications\Notification;
@@ -99,8 +97,8 @@ class InboundResource extends Resource
                 //
             ])
             ->actions([
-                EditAction::make()->button()->label(''),
-                DeleteAction::make()->button()->label(''),
+                Actions\EditAction::make()->button()->label(''),
+                Actions\DeleteAction::make()->button()->label(''),
             ])
             ->heading(function () {
                 $value = \App\Models\Setting::where('key', 'xui_default_inbound_id')->value('value');
@@ -113,8 +111,8 @@ class InboundResource extends Resource
                 return 'ID ورودی پیش فرض پنل: ' . $value;
             })
             ->bulkActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                Actions\BulkActionGroup::make([
+                    Actions\DeleteBulkAction::make(),
                 ]),
             ]);
 

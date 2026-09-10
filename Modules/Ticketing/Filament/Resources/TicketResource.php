@@ -2,11 +2,9 @@
 
 namespace Modules\Ticketing\Filament\Resources;
 
+use Filament\Actions;
+
 use App\Filament\Resources\TicketResource\Pages;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\EditAction;
-use Filament\Actions\ViewAction;
 use Filament\Forms;
 use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
@@ -139,12 +137,12 @@ class TicketResource extends Resource
                 // می‌توانید فیلترها را اینجا اضافه کنید
             ])
             ->actions([
-                ViewAction::make(),
-                EditAction::make(),
+                Actions\ViewAction::make(),
+                Actions\EditAction::make(),
             ])
             ->bulkActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                Actions\BulkActionGroup::make([
+                    Actions\DeleteBulkAction::make(),
                 ]),
             ]);
     }

@@ -2,12 +2,10 @@
 
 namespace App\Filament\Resources;
 
+use Filament\Actions;
+
 use App\Filament\Resources\PlanResource\Pages;
 use App\Models\Plan;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteAction;
-use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\EditAction;
 use Filament\Forms;
 use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
@@ -114,12 +112,12 @@ class PlanResource extends Resource
                 //
             ])
             ->actions([
-                EditAction::make()->button()->label(''),
-                DeleteAction::make()->button()->label(''),
+                Actions\EditAction::make()->button()->label(''),
+                Actions\DeleteAction::make()->button()->label(''),
             ])
             ->bulkActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                Actions\BulkActionGroup::make([
+                    Actions\DeleteBulkAction::make(),
                 ]),
             ]);
     }

@@ -2,14 +2,12 @@
 
 namespace App\Filament\Resources;
 
+use Filament\Actions;
+
 use App\Events\OrderPaid;
 use App\Filament\Resources\OrderResource\Pages;
 use App\Models\Inbound;
 use App\Models\Order;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteAction;
-use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\EditAction;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\ViewField;
@@ -339,8 +337,8 @@ class OrderResource extends Resource
                             }
                         });
                     }),
-                EditAction::make()->button()->label('')->tooltip('ویرایش'),
-                DeleteAction::make()->button()->label('')->tooltip('حذف'),
+                Actions\EditAction::make()->button()->label('')->tooltip('ویرایش'),
+                Actions\DeleteAction::make()->button()->label('')->tooltip('حذف'),
 
 
 
@@ -352,7 +350,7 @@ class OrderResource extends Resource
 
 
             ])
-            ->bulkActions([BulkActionGroup::make([DeleteBulkAction::make()])]);
+            ->bulkActions([Actions\BulkActionGroup::make([Actions\DeleteBulkAction::make()])]);
     }
 
     public static function getRelations(): array { return []; }

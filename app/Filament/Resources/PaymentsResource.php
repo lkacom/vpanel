@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources;
 
+use Filament\Actions;
+
 use App\Events\OrderPaid;
 use App\Filament\Resources\PaymentsResource\Pages;
 use App\Filament\Resources\PaymentsResource\RelationManagers;
@@ -10,7 +12,6 @@ use App\Models\Order;
 use App\Models\Setting;
 use App\Models\Transaction;
 use App\Services\MarzbanService;
-use Filament\Actions\ViewAction;
 use Filament\Forms;
 use Filament\Schemas\Schema;
 use Filament\Forms\Components\TextInput;
@@ -99,7 +100,7 @@ class PaymentsResource extends Resource
                 Tables\Filters\SelectFilter::make('type')->label('نوع تراکنش')->options(['purchase' => 'خرید', 'deposit' => 'افزایش اعتبار']),
             ])
             ->actions([
-                ViewAction::make(),
+                Actions\ViewAction::make(),
             ]);
 
     }
