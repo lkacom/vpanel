@@ -21,7 +21,7 @@ use App\Services\MarzbanService;
 use Morilog\Jalali\Jalalian;
 use Nette\Utils\FileInfo;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
-use App\Services\XUIService;
+use App\Services\XUIServiceFactory;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;
@@ -228,7 +228,12 @@ class OrderResource extends Resource
                                     Notification::make()->title('خطا')->body('تمدید خودکار برای پنل سنایی هنوز پیاده‌سازی نشده است.')->danger()->send();
                                     return;
                                 }
-                                $xuiService = new XUIService($settings->get('xui_host'), $settings->get('xui_user'), $settings->get('xui_pass'));
+                                $xuiService = XUIServiceFactory::make(
+                                    $panelType,
+                                    (string) $settings->get('xui_host'),
+                                    (string) $settings->get('xui_user'),
+                                    (string) $settings->get('xui_pass')
+                                );
                                 $defaultInboundId = $settings->get('xui_default_inbound_id');
                                 $inbound = Inbound::where('inbound_data->id', $defaultInboundId)->first();
 

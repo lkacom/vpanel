@@ -4,8 +4,8 @@ namespace App\Filament\Pages;
 
 use App\Models\Inbound;
 use App\Models\Setting;
-use App\Services\XUIService;
 use App\Services\MarzbanService;
+use App\Services\XUIServiceFactory;
 use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
@@ -19,6 +19,7 @@ use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Support\Exceptions\Halt;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class VpnSettings extends Page implements HasForms
@@ -97,7 +98,7 @@ class VpnSettings extends Page implements HasForms
                                 TextInput::make('marzban_node_hostname')->label('آدرس دامنه/سرور برای کانفیگ'),
                             ]),
 
-                        Section::make('تنظیمات پنل علیرضا / TX-UI')
+                        Section::make('تنظیمات پنل سنایی / علیرضا')
                             ->visible(fn (Get $get) => in_array($get('panel_type'), ['sanaei', 'txui'], true))
                             ->schema([
                                 TextInput::make('xui_host')
@@ -204,10 +205,11 @@ class VpnSettings extends Page implements HasForms
                 }
 
                 if (in_array($panelType, ['sanaei', 'txui'], true)) {
-                    $xui = new XUIService(
-                        $formData['xui_host'] ?? null,
-                        $formData['xui_user'] ?? null,
-                        $formData['xui_pass'] ?? null
+                    $xui = XUIServiceFactory::make(
+                        $panelType,
+                        (string) ($formData['xui_host'] ?? ''),
+                        (string) ($formData['xui_user'] ?? ''),
+                        (string) ($formData['xui_pass'] ?? '')
                     );
 
                     if (!$xui->login()) {
@@ -219,8 +221,13 @@ class VpnSettings extends Page implements HasForms
                         return false;
                     }
 
-                    $inbounds = $xui->getInbounds();
-                    if (is_null($inbounds) || empty($inbounds)) {
+                    $inbounds = collect($xui->getInbounds())
+                        ->filter(fn ($inbound): bool => is_array($inbound) && isset($inbound['id']))
+                        ->keyBy(fn (array $inbound): string => (string) $inbound['id'])
+                        ->values()
+                        ->all();
+
+                    if (empty($inbounds)) {
                         Notification::make()
                             ->title('خطا در دریافت اینباندها')
                             ->body('سرور در دسترس نیست یا اینباندی موجود نیست.')
@@ -228,31 +235,36 @@ class VpnSettings extends Page implements HasForms
                             ->send();
                         return false;
                     }
-                    Inbound::truncate();
-                    foreach ($formData as $key => $value) {
-                        Setting::updateOrCreate(['key' => $key], ['value' => $value ?? '']);
+                    $inboundIds = array_map(
+                        static fn (array $inbound): string => (string) $inbound['id'],
+                        $inbounds
+                    );
+                    $configuredInboundId = $formData['xui_default_inbound_id'] ?? null;
+                    if ($configuredInboundId !== null && $configuredInboundId !== ''
+                        && !in_array((string) $configuredInboundId, $inboundIds, true)) {
+                        $formData['xui_default_inbound_id'] = null;
+                        $this->data['xui_default_inbound_id'] = null;
                     }
+
+                    DB::transaction(function () use ($formData, $inbounds): void {
+                        // delete() remains transactional; truncate() would issue an implicit MySQL commit.
+                        Inbound::query()->delete();
+
+                        foreach ($inbounds as $inbound) {
+                            Inbound::create([
+                                'title' => $inbound['remark'] ?? "Inbound {$inbound['id']}",
+                                'inbound_data' => $inbound,
+                            ]);
+                        }
+
+                        foreach ($formData as $key => $value) {
+                            Setting::updateOrCreate(['key' => $key], ['value' => $value ?? '']);
+                        }
+                    });
 
                     Cache::forget('settings');
 
-                    $synced = 0;
-                    foreach ($inbounds as $inbound) {
-                        $existing = Inbound::where('inbound_data->id', $inbound['id'])->first();
-
-                        if ($existing) {
-                            $existing->update([
-                                'title' => $existing->title ?: ($inbound['remark'] ?? "Inbound {$inbound['id']}"),
-                                'inbound_data' => $inbound
-                            ]);
-                        } else {
-                            Inbound::create([
-                                'title' => $inbound['remark'] ?? "Inbound {$inbound['id']}",
-                                'inbound_id' => $inbound['id'],
-                                'inbound_data' => $inbound
-                            ]);
-                        }
-                        $synced++;
-                    }
+                    $synced = count($inbounds);
 
                     Cache::forget('inbounds_dropdown');
 

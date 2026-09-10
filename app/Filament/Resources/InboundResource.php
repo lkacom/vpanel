@@ -4,7 +4,6 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\InboundResource\Pages;
 use App\Models\Inbound;
-use App\Services\XUIService;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Notifications\Notification;

@@ -5,7 +5,7 @@ use App\Filament\Resources\PaymentsResource;
 use App\Models\Order;
 use App\Models\User;
 use App\Filament\Pages\VpnSettings;
-use App\Services\XUIService;
+use App\Services\SanaeiXUIService;
 use App\Services\MarzbanService;
 use App\Traits\ManagesServiceProvisioning;
 use Database\Seeders\DatabaseSeeder;
@@ -63,8 +63,8 @@ it('accepts the standard Sanaei login response and rejects an explicit failure',
         'https://invalid-sanaei.test/*' => Http::response(['success' => false, 'msg' => '用户名或密码错误'], 200),
     ]);
 
-    expect((new XUIService('https://sanaei.test', 'admin', 'correct-password'))->login())->toBeTrue();
-    expect((new XUIService('https://invalid-sanaei.test/base', 'admin', 'wrong-password'))->login())->toBeFalse();
+    expect((new SanaeiXUIService('https://sanaei.test', 'admin', 'correct-password'))->login())->toBeTrue();
+    expect((new SanaeiXUIService('https://invalid-sanaei.test/base', 'admin', 'wrong-password'))->login())->toBeFalse();
 
     Http::assertSent(fn ($request) => $request->url() === 'https://sanaei.test/login'
         && $request->data()['username'] === 'admin'

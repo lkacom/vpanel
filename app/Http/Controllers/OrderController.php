@@ -9,7 +9,7 @@ use App\Models\Plan;
 use App\Models\Setting;
 use App\Models\Transaction;
 use App\Services\MarzbanService;
-use App\Services\XUIService;
+use App\Services\XUIServiceFactory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -227,10 +227,11 @@ class OrderController extends Controller
 
                 } elseif (in_array($panelType, ['sanaei', 'txui', 'xui'], true)) {
                     // پیاده‌سازی تمدید برای X-UI
-                    $xuiService = new XUIService(
-                        $settings->get('xui_host'),
-                        $settings->get('xui_user'),
-                        $settings->get('xui_pass')
+                    $xuiService = XUIServiceFactory::make(
+                        $panelType,
+                        (string) $settings->get('xui_host'),
+                        (string) $settings->get('xui_user'),
+                        (string) $settings->get('xui_pass')
                     );
 
                     // دریافت اینباند پیش‌فرض
@@ -373,8 +374,7 @@ class OrderController extends Controller
                                     'search_client_id' => $clientId
                                 ]);
 
-//                                $addResponse = $xuiService->addClient($inboundData['id'], $clientData);
-                                $addResponse = $xuiService->updateClient($inboundData['id'],$clientId,$clientData);
+                                $addResponse = $xuiService->addClient($inboundData['id'], $clientData);
 
                                 if ($addResponse && isset($addResponse['success']) && $addResponse['success']) {
                                     $uuid = $clientId;

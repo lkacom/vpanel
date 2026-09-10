@@ -6,7 +6,7 @@ use App\Models\Order;
 use App\Models\Inbound;
 use App\Models\Plan;
 use App\Services\MarzbanService;
-use App\Services\XUIService;
+use App\Services\XUIServiceFactory;
 use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Log;
 
@@ -63,8 +63,7 @@ trait ManagesServiceProvisioning
             if ($panelType === 'marzban') {
                 $marzbanService = new MarzbanService($settings->get('marzban_host'), $settings->get('marzban_sudo_username'), $settings->get('marzban_sudo_password'), $settings->get('marzban_node_hostname'));
 
-                // مطمئن شوید مدل Plan ستون data_limit_gb را دارد (در کد شما volume_gb بود، من به data_limit_gb تغییر دادم)
-                $userData = ['expire' => $newExpiresAt->getTimestamp(), 'data_limit' => $plan->data_limit_gb * 1024 * 1024 * 1024];
+                $userData = ['expire' => $newExpiresAt->getTimestamp(), 'data_limit' => $plan->volume_gb * 1024 * 1024 * 1024];
 
                 $response = $isRenewal
                     ? $marzbanService->updateUser($uniqueUsername, $userData)
@@ -84,18 +83,24 @@ trait ManagesServiceProvisioning
                 if (!$inboundId) {
                     $this->handleProvisioningError('اینباند XUI در تنظیمات ست نشده.'); return false;
                 }
-                $xuiService = new XUIService($settings->get('xui_host'), $settings->get('xui_user'), $settings->get('xui_pass'));
+                $xuiService = XUIServiceFactory::make(
+                    $panelType,
+                    (string) $settings->get('xui_host'),
+                    (string) $settings->get('xui_user'),
+                    (string) $settings->get('xui_pass')
+                );
                 if (!$xuiService->login()) {
                     $this->handleProvisioningError('خطا در لاگین به پنل X-UI.'); return false;
                 }
-                $inbound = Inbound::find($inboundId);
+                $inbound = Inbound::where('inbound_data->id', $inboundId)->first();
                 if (!$inbound || !$inbound->inbound_data) {
                     $this->handleProvisioningError('اطلاعات اینباند پیش‌فرض X-UI یافت نشد.'); return false;
                 }
 
-                $inboundData = json_decode($inbound->inbound_data, true);
-                // مطمئن شوید مدل Plan ستون data_limit_gb را دارد (در کد شما volume_gb بود، من به data_limit_gb تغییر دادم)
-                $clientData = ['email' => $uniqueUsername, 'total' => $plan->data_limit_gb * 1024 * 1024 * 1024, 'expiryTime' => $newExpiresAt->getTimestamp() * 1000];
+                $inboundData = is_array($inbound->inbound_data)
+                    ? $inbound->inbound_data
+                    : json_decode((string) $inbound->inbound_data, true);
+                $clientData = ['email' => $uniqueUsername, 'total' => $plan->volume_gb * 1024 * 1024 * 1024, 'expiryTime' => $newExpiresAt->getTimestamp() * 1000];
 
                 if ($isRenewal) {
                     //TODO: منطق تمدید کاربر در XUI (یافتن کاربر و آپدیت)
