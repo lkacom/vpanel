@@ -66,7 +66,7 @@ class StatsOverview extends BaseWidget
                 ->description('فروش ماه جاری')
                 ->descriptionIcon('heroicon-m-calendar-days',IconPosition::Before)
                 ->extraAttributes([
-                    'class' => 'bg-black text-white', // پس‌زمینه مشکی و متن سفید
+                    'class' => 'bg-white text-black', // پس‌زمینه مشکی و متن سفید
                 ])
                 ->color(Color::Lime),
 
