@@ -36,6 +36,7 @@ class AdminPanelProvider extends PanelProvider
             ->login()
             ->darkMode()
             ->topNavigation()
+            ->viteTheme('resources/css/filament/admin/theme.css')
             ->brandLogo('/images/logo.png')
             ->brandLogoHeight('4rem')
             ->favicon(asset('favicon.png'))
