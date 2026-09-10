@@ -12,17 +12,20 @@ class SanaeiXUIService extends AbstractXUIService
             return true;
         }
 
-        try {
-            $csrfResponse = $this->client()->get($this->url('/csrf-token'));
-            $csrfToken = $csrfResponse->json('obj');
+        Log::debug(static::class . ' attempting login.', [
+            'login_url' => $this->url('/login'),
+            'csrf_url'  => $this->url('/csrf-token'),
+        ]);
 
-            if ($csrfResponse->successful() && is_string($csrfToken) && $csrfToken !== '') {
+        try {
+            $csrfToken = $this->fetchCsrfToken();
+
+            if ($csrfToken !== null) {
                 $response = $this->client()
                     ->withHeader('X-CSRF-Token', $csrfToken)
                     ->asJson()
                     ->post($this->url('/login'), $this->loginCredentials());
             } else {
-                // Compatibility for legacy 3X-UI releases that did not protect login with CSRF.
                 $response = $this->client()
                     ->asForm()
                     ->post($this->url('/login'), $this->loginCredentials());
@@ -30,18 +33,60 @@ class SanaeiXUIService extends AbstractXUIService
 
             if ($this->isSuccessfulResponse($response)) {
                 $this->isLoggedIn = true;
-
                 return true;
             }
 
-            $this->logHttpFailure('login', $response, ['url' => $this->url('/login')]);
+            // Fallback: form بدون CSRF
+            if ($csrfToken !== null) {
+                $response = $this->client()
+                    ->asForm()
+                    ->post($this->url('/login'), $this->loginCredentials());
+
+                if ($this->isSuccessfulResponse($response)) {
+                    $this->isLoggedIn = true;
+                    return true;
+                }
+            }
+
+            $this->logHttpFailure('login', $response, ['login_url' => $this->url('/login')]);
         } catch (\Throwable $exception) {
-            Log::warning(static::class.' login request raised an exception.', [
+            Log::warning(static::class . ' login exception.', [
                 'message' => $exception->getMessage(),
             ]);
         }
 
         return false;
+    }
+
+    private function fetchCsrfToken(): ?string
+    {
+        try {
+            $response = $this->client()->get($this->url('/csrf-token'));
+
+            if (! $response->successful()) {
+                return null;
+            }
+
+            $token = $response->json('obj');
+            if (is_string($token) && $token !== '') {
+                return $token;
+            }
+
+            $token = $response->json('token');
+            if (is_string($token) && $token !== '') {
+                return $token;
+            }
+
+            $body = trim($response->body());
+            if ($body !== '' && strlen($body) < 256
+                && ! str_starts_with($body, '{')
+                && ! str_starts_with($body, '<')) {
+                return $body;
+            }
+        } catch (\Throwable) {
+        }
+
+        return null;
     }
 
     /**
@@ -53,26 +98,41 @@ class SanaeiXUIService extends AbstractXUIService
             return [];
         }
 
-        try {
-            $response = $this->client()->get($this->url('/panel/api/inbounds/list'));
-            if (! $this->isSuccessfulResponse($response)) {
-                $this->logHttpFailure('get inbounds', $response);
+        // endpoint های ممکن به ترتیب اولویت — هر کدام که 200 داد استفاده می‌شود
+        $candidates = [
+            '/api/inbounds/list',           // پنل ثنایی v2/v3 با basePath
+            '/panel/api/inbounds/list',     // fallback اگر basePath خالی است
+        ];
 
-                return [];
+        foreach ($candidates as $path) {
+            try {
+                $url      = $this->url($path);
+                $response = $this->client()->get($url);
+
+                Log::debug(static::class . ' getInbounds attempt.', [
+                    'url'    => $url,
+                    'status' => $response->status(),
+                ]);
+
+                if (! $this->isSuccessfulResponse($response)) {
+                    continue;
+                }
+
+                $inbounds = $response->json('obj', []);
+
+                return is_array($inbounds)
+                    ? array_values(array_filter($inbounds, 'is_array'))
+                    : [];
+            } catch (\Throwable $exception) {
+                Log::warning(static::class . ' getInbounds exception.', [
+                    'path'    => $path,
+                    'message' => $exception->getMessage(),
+                ]);
             }
-
-            $inbounds = $response->json('obj', []);
-
-            return is_array($inbounds)
-                ? array_values(array_filter($inbounds, 'is_array'))
-                : [];
-        } catch (\Throwable $exception) {
-            Log::warning(static::class.' could not retrieve inbounds.', [
-                'message' => $exception->getMessage(),
-            ]);
-
-            return [];
         }
+
+        Log::warning(static::class . ' getInbounds: all endpoints failed.');
+        return [];
     }
 
     /**
@@ -84,18 +144,27 @@ class SanaeiXUIService extends AbstractXUIService
             return [];
         }
 
-        try {
-            $response = $this->client()->get($this->url("/panel/api/inbounds/get/{$inboundId}"));
+        $candidates = [
+            "/api/inbounds/get/{$inboundId}",
+            "/panel/api/inbounds/get/{$inboundId}",
+        ];
 
-            return $this->clientsFromInboundResponse($response, $inboundId);
-        } catch (\Throwable $exception) {
-            Log::warning(static::class.' could not retrieve inbound clients.', [
-                'inbound_id' => $inboundId,
-                'message' => $exception->getMessage(),
-            ]);
-
-            return [];
+        foreach ($candidates as $path) {
+            try {
+                $response = $this->client()->get($this->url($path));
+                $clients  = $this->clientsFromInboundResponse($response, $inboundId);
+                if (! empty($clients)) {
+                    return $clients;
+                }
+            } catch (\Throwable $exception) {
+                Log::warning(static::class . ' getClients exception.', [
+                    'path'    => $path,
+                    'message' => $exception->getMessage(),
+                ]);
+            }
         }
+
+        return [];
     }
 
     /**
@@ -110,33 +179,29 @@ class SanaeiXUIService extends AbstractXUIService
 
         $payload = $this->newClientPayload($clientData);
 
-        try {
-            $response = $this->client()
-                ->asJson()
-                ->post($this->url('/panel/api/clients/add'), [
-                    'client' => $payload['client'],
-                    'inboundIds' => [$inboundId],
-                ]);
+        // اول endpoint جدید v3+ را امتحان کن، بعد قدیمی
+        $result = $this->tryPost('/api/clients/add', [
+            'client'     => $payload['client'],
+            'inboundIds' => [$inboundId],
+        ]);
 
-            if (! $this->isSuccessfulResponse($response)) {
-                $this->logHttpFailure('add client', $response, ['inbound_id' => $inboundId]);
-
-                return $this->responsePayload($response, 'Sanaei panel rejected the client creation request.');
-            }
-
-            return array_merge($this->responsePayload($response, ''), [
-                'generated_uuid' => $payload['generated_uuid'],
-                'generated_subId' => $payload['generated_subId'],
-                'inbound_id' => $inboundId,
+        if ($result === null) {
+            // endpoint قدیمی
+            $result = $this->tryPost('/api/inbounds/addClient', [
+                'id'       => $inboundId,
+                'settings' => json_encode(['clients' => [$payload['client']]], JSON_THROW_ON_ERROR),
             ]);
-        } catch (\Throwable $exception) {
-            Log::warning(static::class.' could not add a client.', [
-                'inbound_id' => $inboundId,
-                'message' => $exception->getMessage(),
-            ]);
-
-            return ['success' => false, 'msg' => 'Error creating a client in the Sanaei panel.'];
         }
+
+        if ($result === null) {
+            return ['success' => false, 'msg' => 'Sanaei panel rejected the client creation request.'];
+        }
+
+        return array_merge($result, [
+            'generated_uuid'  => $payload['generated_uuid'],
+            'generated_subId' => $payload['generated_subId'],
+            'inbound_id'      => $inboundId,
+        ]);
     }
 
     /**
@@ -150,39 +215,53 @@ class SanaeiXUIService extends AbstractXUIService
         }
 
         $existingClient = $this->findClient($this->getClients($inboundId), $clientId, $clientData);
-        $email = $clientData['email'] ?? $existingClient['email'] ?? null;
+        $email          = $clientData['email'] ?? $existingClient['email'] ?? null;
+
         if (! is_string($email) || $email === '') {
             return ['success' => false, 'msg' => 'Client email is required to update a Sanaei client.'];
         }
 
         $clientData['email'] = $email;
-        $clientData['id'] = $existingClient['id'] ?? $clientData['id'] ?? $clientId;
-        $client = $this->clientFields($clientData, is_array($existingClient) ? $existingClient : []);
+        $clientData['id']    = $existingClient['id'] ?? $clientData['id'] ?? $clientId;
+        $client              = $this->clientFields($clientData, is_array($existingClient) ? $existingClient : []);
 
+        $result = $this->tryPost('/api/clients/update/' . rawurlencode($email), $client);
+
+        if ($result === null) {
+            return ['success' => false, 'msg' => 'Sanaei panel rejected the client update request.'];
+        }
+
+        return $result;
+    }
+
+    /**
+     * یک POST JSON می‌زند و در صورت موفقیت payload برمی‌گرداند، در غیر این صورت null.
+     *
+     * @param  array<string, mixed>  $body
+     * @return array<string, mixed>|null
+     */
+    private function tryPost(string $path, array $body): ?array
+    {
         try {
-            $response = $this->client()
-                ->asJson()
-                ->post($this->url('/panel/api/clients/update/'.rawurlencode($email)), $client);
+            $url      = $this->url($path);
+            $response = $this->client()->asJson()->post($url, $body);
 
-            if (! $this->isSuccessfulResponse($response)) {
-                $this->logHttpFailure('update client', $response, [
-                    'inbound_id' => $inboundId,
-                    'client_id' => $clientId,
-                ]);
-
-                return $this->responsePayload($response, 'Sanaei panel rejected the client update request.');
-            }
-
-            return $this->responsePayload($response, '');
-        } catch (\Throwable $exception) {
-            Log::warning(static::class.' could not update a client.', [
-                'inbound_id' => $inboundId,
-                'client_id' => $clientId,
-                'message' => $exception->getMessage(),
+            Log::debug(static::class . ' tryPost.', [
+                'url'    => $url,
+                'status' => $response->status(),
             ]);
 
-            return ['success' => false, 'msg' => 'Error updating a client in the Sanaei panel.'];
+            if ($this->isSuccessfulResponse($response)) {
+                return $this->responsePayload($response, '');
+            }
+        } catch (\Throwable $exception) {
+            Log::warning(static::class . ' tryPost exception.', [
+                'path'    => $path,
+                'message' => $exception->getMessage(),
+            ]);
         }
+
+        return null;
     }
 
     /**

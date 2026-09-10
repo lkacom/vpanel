@@ -98,30 +98,54 @@ class VpnSettings extends Page implements HasForms
                                 TextInput::make('marzban_node_hostname')->label('آدرس دامنه/سرور برای کانفیگ'),
                             ]),
 
-                        Section::make('تنظیمات پنل سنایی / علیرضا')
-                            ->visible(fn (Get $get) => in_array($get('panel_type'), ['sanaei', 'txui'], true))
+                        Section::make('تنظیمات پنل سنایی')
+                            ->visible(fn (Get $get) => in_array($get('panel_type'), ['sanaei'], true))
                             ->schema([
                                 TextInput::make('xui_host')
                                     ->label('آدرس کامل پنل')
-                                    ->required(fn (Get $get): bool => in_array($get('panel_type'), ['sanaei', 'txui'], true)),
+                                    ->required(fn (Get $get): bool => in_array($get('panel_type'), ['sanaei'], true)),
                                 TextInput::make('xui_user')
                                     ->label('نام کاربری')
-                                    ->required(fn (Get $get): bool => in_array($get('panel_type'), ['sanaei', 'txui'], true)),
+                                    ->required(fn (Get $get): bool => in_array($get('panel_type'), ['sanaei'], true)),
                                 TextInput::make('xui_pass')
                                     ->label('رمز عبور')
                                     ->password()
-                                    ->required(fn (Get $get): bool => in_array($get('panel_type'), ['sanaei', 'txui'], true)),
+                                    ->required(fn (Get $get): bool => in_array($get('panel_type'), ['sanaei'], true)),
 
                                 Radio::make('xui_link_type')
                                     ->label('نوع لینک تحویلی')
                                     ->options(['single' => 'لینک تکی', 'subscription' => 'لینک سابسکریپشن'])
                                     ->default('single')
-                                    ->required(fn (Get $get): bool => in_array($get('panel_type'), ['sanaei', 'txui'], true)),
+                                    ->required(fn (Get $get): bool => in_array($get('panel_type'), ['sanaei'], true)),
+
+                                TextInput::make('xui_subscription_url_base')
+                                    ->label('آدرس پایه لینک سابسکریپشن'),
+                            ]),
+                        Section::make('تنظیمات پنل علیرضا')
+                            ->visible(fn (Get $get) => in_array($get('panel_type'), ['txui'], true))
+                            ->schema([
+                                TextInput::make('xui_host')
+                                    ->label('آدرس کامل پنل')
+                                    ->required(fn (Get $get): bool => in_array($get('panel_type'), ['txui'], true)),
+                                TextInput::make('xui_user')
+                                    ->label('نام کاربری')
+                                    ->required(fn (Get $get): bool => in_array($get('panel_type'), ['txui'], true)),
+                                TextInput::make('xui_pass')
+                                    ->label('رمز عبور')
+                                    ->password()
+                                    ->required(fn (Get $get): bool => in_array($get('panel_type'), ['txui'], true)),
+
+                                Radio::make('xui_link_type')
+                                    ->label('نوع لینک تحویلی')
+                                    ->options(['single' => 'لینک تکی', 'subscription' => 'لینک سابسکریپشن'])
+                                    ->default('single')
+                                    ->required(fn (Get $get): bool => in_array($get('panel_type'), ['txui'], true)),
 
                                 TextInput::make('xui_subscription_url_base')
                                     ->label('آدرس پایه لینک سابسکریپشن'),
                             ]),
                     ])
+
                     ->afterValidation(function () {
                         if (!$this->submit(initialSave: true)) {
                             throw new Halt;
