@@ -6,6 +6,10 @@ use App\Events\OrderPaid;
 use App\Filament\Resources\OrderResource\Pages;
 use App\Models\Inbound;
 use App\Models\Order;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\ViewField;
@@ -27,7 +31,7 @@ use Filament\Schemas\Schema;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
-use Filament\Tables\Actions\Action;
+use Filament\Actions\Action;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Table;
@@ -45,7 +49,7 @@ class OrderResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
-        return $form
+        return $schema
             ->schema([
                 Forms\Components\Select::make('user_id')->inlineLabel()->relationship('user', 'name')->label('کاربر')->disabled(),
                 TextInput::make('plan_name') // نام فیلد دلخواه برای نمایش
@@ -335,8 +339,8 @@ class OrderResource extends Resource
                             }
                         });
                     }),
-                Tables\Actions\EditAction::make()->button()->label('')->tooltip('ویرایش'),
-                Tables\Actions\DeleteAction::make()->button()->label('')->tooltip('حذف'),
+                EditAction::make()->button()->label('')->tooltip('ویرایش'),
+                DeleteAction::make()->button()->label('')->tooltip('حذف'),
 
 
 
@@ -348,7 +352,7 @@ class OrderResource extends Resource
 
 
             ])
-            ->bulkActions([Tables\Actions\BulkActionGroup::make([Tables\Actions\DeleteBulkAction::make()])]);
+            ->bulkActions([BulkActionGroup::make([DeleteBulkAction::make()])]);
     }
 
     public static function getRelations(): array { return []; }

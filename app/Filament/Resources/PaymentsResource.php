@@ -10,6 +10,7 @@ use App\Models\Order;
 use App\Models\Setting;
 use App\Models\Transaction;
 use App\Services\MarzbanService;
+use Filament\Actions\ViewAction;
 use Filament\Forms;
 use Filament\Schemas\Schema;
 use Filament\Forms\Components\TextInput;
@@ -17,7 +18,7 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Support\Enums\FontWeight;
 use Filament\Tables;
-use Filament\Tables\Actions\Action;
+use Filament\Actions\Action;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Table;
@@ -41,7 +42,7 @@ class PaymentsResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
-        return $form
+        return $schema
             ->schema([
                 Forms\Components\TextInput::make('order_id')
                     ->label('شناسه')
@@ -98,7 +99,7 @@ class PaymentsResource extends Resource
                 Tables\Filters\SelectFilter::make('type')->label('نوع تراکنش')->options(['purchase' => 'خرید', 'deposit' => 'افزایش اعتبار']),
             ])
             ->actions([
-                Tables\Actions\ViewAction::make(),
+                ViewAction::make(),
             ]);
 
     }

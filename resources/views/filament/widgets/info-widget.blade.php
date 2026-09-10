@@ -20,7 +20,7 @@
             </div>
 
             <div class="text-sm text-black-500 dark:text-gray-400">
-مدیریت فروش، کاربران،گزارشات مالی و پشتیانی            </div>
+مدیریت فروش،گزارشات مالی و پشتیبانی کاربران            </div>
             <!-- کادر آخر -->
             <div class="flex flex-col items-start gap-y-1">
 

@@ -4,12 +4,16 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\InboundResource\Pages;
 use App\Models\Inbound;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
 use Filament\Forms;
 use Filament\Schemas\Schema;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
-use Filament\Tables\Actions\Action;
+use Filament\Actions\Action;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
@@ -28,7 +32,7 @@ class InboundResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
-        return $form
+        return $schema
             ->schema([
                 Forms\Components\TextInput::make('title')
                     ->label('عنوان دلخواه برای اینباند')
@@ -95,8 +99,8 @@ class InboundResource extends Resource
                 //
             ])
             ->actions([
-                Tables\Actions\EditAction::make()->button()->label(''),
-                Tables\Actions\DeleteAction::make()->button()->label(''),
+                EditAction::make()->button()->label(''),
+                DeleteAction::make()->button()->label(''),
             ])
             ->heading(function () {
                 $value = \App\Models\Setting::where('key', 'xui_default_inbound_id')->value('value');
@@ -109,8 +113,8 @@ class InboundResource extends Resource
                 return 'ID ورودی پیش فرض پنل: ' . $value;
             })
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ]);
 

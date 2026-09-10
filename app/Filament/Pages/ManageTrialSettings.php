@@ -40,7 +40,7 @@ class ManageTrialSettings extends Page implements HasForms
 
     public function form(Schema $schema): Schema
     {
-        return $form
+        return $schema
             ->schema([
                 Section::make('تنظیمات اصلی اکانت تست')
                     ->description('در این بخش می‌توانید قابلیت اکانت تست را فعال کرده و مقادیر پیش‌فرض آن را تعیین کنید.')

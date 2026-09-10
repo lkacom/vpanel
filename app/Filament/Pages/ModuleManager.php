@@ -61,7 +61,7 @@ class ModuleManager extends Page implements HasForms
 
     public function form(Schema $schema): Schema
     {
-        return $form
+        return $schema
             ->schema([
                 FileUpload::make('plugin_zip')
                     ->label('فایل Zip افزونه')

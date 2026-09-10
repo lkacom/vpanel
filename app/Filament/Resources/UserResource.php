@@ -4,13 +4,18 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\UserResource\Pages;
 use App\Models\User;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
 use Filament\Forms;
+use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Notifications\Notification;
 use Filament\Tables\Table;
-use Filament\Tables\Actions\Action;
+use Filament\Actions\Action;
 use Illuminate\Support\Facades\Hash;
 use App\Models\Transaction;
 use Illuminate\Support\Facades\DB;
@@ -34,7 +39,7 @@ class UserResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
-        return $form
+        return $schema
             ->schema([
                 Forms\Components\TextInput::make('name')
                     ->label('نام')
@@ -73,10 +78,10 @@ class UserResource extends Resource
                 //
             ])
             ->actions([
-                Tables\Actions\EditAction::make()->button()->label(''),
-                Tables\Actions\DeleteAction::make()->button()->label(''),
+                EditAction::make()->button()->label(''),
+                DeleteAction::make()->button()->label(''),
 
-                Tables\Actions\Action::make('adjust_wallet')
+                Action::make('adjust_wallet')
                     ->label('تنظیم کیف پول')
                     ->icon('heroicon-o-currency-dollar')
                     ->button()
@@ -91,7 +96,7 @@ class UserResource extends Resource
                             ->content(fn (User $record) => '💰 ' . number_format($record->balance ?? 0) . ' تومان')
                             ->columnSpanFull(),
 
-                        Forms\Components\Grid::make(2)
+                        Grid::make(2)
                             ->schema([
                                 Forms\Components\TextInput::make('amount')
                                     ->label('مبلغ تغییر')
@@ -156,8 +161,8 @@ class UserResource extends Resource
 
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ]);
     }
