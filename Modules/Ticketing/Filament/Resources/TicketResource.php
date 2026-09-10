@@ -4,7 +4,7 @@ namespace Modules\Ticketing\Filament\Resources;
 
 use App\Filament\Resources\TicketResource\Pages;
 use Filament\Forms;
-use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -15,7 +15,7 @@ class TicketResource extends Resource
 {
     protected static ?string $model = Ticket::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-chat-bubble-left-right';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-chat-bubble-left-right';
     protected static ?string $navigationLabel = 'تیکت‌های پشتیبانی';
     protected static ?string $modelLabel = 'تیکت';
     protected static ?string $pluralModelLabel = 'تیکت‌ها';
@@ -26,7 +26,7 @@ class TicketResource extends Resource
     }
 
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
         return $form
             ->schema([

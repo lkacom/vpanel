@@ -23,7 +23,7 @@ use Nette\Utils\FileInfo;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 use App\Services\XUIServiceFactory;
 use Filament\Forms;
-use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -37,13 +37,13 @@ use Illuminate\Support\Facades\Storage;
 class OrderResource extends Resource
 {
     protected static ?string $model = Order::class;
-    protected static ?string $navigationIcon = 'heroicon-o-shopping-cart';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-shopping-cart';
     protected static ?string $navigationLabel = 'سفارشات';
     protected static ?string $modelLabel = 'سفارش';
     protected static ?string $pluralModelLabel = 'سفارشات';
-    protected static ?string $navigationGroup = 'مدیریت مالی';
+    protected static string|\UnitEnum|null $navigationGroup = 'مدیریت مالی';
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
         return $form
             ->schema([

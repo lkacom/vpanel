@@ -5,7 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\InboundResource\Pages;
 use App\Models\Inbound;
 use Filament\Forms;
-use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -19,14 +19,14 @@ class InboundResource extends Resource
 {
     protected static ?string $model = Inbound::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-arrows-right-left';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-arrows-right-left';
     protected static ?string $navigationLabel = 'لیست ورودی ها(Inbounds)';
     protected static ?string $modelLabel = 'اینباند';
 
     protected static ?string $pluralModelLabel = 'ورودی ها (Inbounds)';
-    protected static ?string $navigationGroup = 'تنظیمات';
+    protected static string|\UnitEnum|null $navigationGroup = 'تنظیمات';
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
         return $form
             ->schema([

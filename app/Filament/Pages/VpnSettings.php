@@ -7,14 +7,14 @@ use App\Models\Setting;
 use App\Services\MarzbanService;
 use App\Services\XUIServiceFactory;
 use Filament\Forms\Components\Radio;
-use Filament\Forms\Components\Section;
+use Filament\Schemas\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Wizard;
+use Filament\Schemas\Components\Wizard;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
-use Filament\Forms\Form;
-use Filament\Forms\Get;
+use Filament\Schemas\Schema;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Support\Exceptions\Halt;
@@ -26,11 +26,11 @@ class VpnSettings extends Page implements HasForms
 {
     use InteractsWithForms;
 
-    protected static ?string $navigationIcon = 'heroicon-o-key';
-    protected static string $view = 'filament.pages.vpn-settings';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-key';
+    protected string $view = 'filament.pages.vpn-settings';
     protected static ?string $navigationLabel = 'افزودن سرور v2ray';
     protected static ?string $title = 'افزودن سرور جدید';
-    protected static ?string $navigationGroup = 'تنظیمات';
+    protected static string|\UnitEnum|null $navigationGroup = 'تنظیمات';
 
     public ?array $data = [];
     private bool $connectionFailed = false;
@@ -65,9 +65,9 @@ class VpnSettings extends Page implements HasForms
         ], $settings));
     }
 
-    public function form(Form $form): Form
+    public function form(Schema $schema): Schema
     {
-        return $form->schema([
+        return $schema->schema([
 
             Wizard::make([
 

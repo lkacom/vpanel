@@ -6,15 +6,15 @@ use App\Models\Inbound;
 use App\Models\Setting;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Radio;
-use Filament\Forms\Components\Section;
+use Filament\Schemas\Components\Section;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Tabs;
+use Filament\Schemas\Components\Tabs;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
-use Filament\Forms\Form;
-use Filament\Forms\Get;
+use Filament\Schemas\Schema;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Illuminate\Support\Facades\Cache;
@@ -24,11 +24,11 @@ class ThemeSettings extends Page implements HasForms
 {
     use InteractsWithForms;
 
-    protected static ?string $navigationIcon = 'heroicon-o-cog-6-tooth';
-    protected static string $view = 'filament.pages.theme-settings';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-cog-6-tooth';
+    protected string $view = 'filament.pages.theme-settings';
     protected static ?string $navigationLabel = 'پیکربندی ';
     protected static ?string $title = 'تنظیمات قالب و محتوای سایت';
-    protected static ?string $navigationGroup = 'تنظیمات';
+    protected static string|\UnitEnum|null $navigationGroup = 'تنظیمات';
 
 
     public ?array $data = [];
@@ -51,9 +51,9 @@ class ThemeSettings extends Page implements HasForms
         ], $settings));
     }
 
-    public function form(Form $form): Form
+    public function form(Schema $schema): Schema
     {
-        return $form->schema([
+        return $schema->schema([
             Tabs::make('Tabs')
                 ->id('main-tabs')
                 ->persistTab()

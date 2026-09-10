@@ -4,7 +4,7 @@ namespace Modules\Referral\Filament\Resources;
 
 use App\Models\User;
 use Filament\Forms;
-use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -13,17 +13,17 @@ use Modules\Referral\Filament\Resources\ReferralResource\Pages;
 class ReferralResource extends Resource
 {
     protected static ?string $model = User::class;
-    protected static ?string $navigationIcon = 'heroicon-o-users';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-users';
     protected static ?string $navigationLabel = 'گزارش دعوت‌ها';
     protected static ?string $modelLabel = 'کاربر';
     protected static ?string $pluralModelLabel = 'گزارش دعوت‌ها';
     protected static ?string $slug = 'referrals';
 
-    protected static ?string $navigationGroup = 'مدیریت افزونه‌ها';
+    protected static string|\UnitEnum|null $navigationGroup = 'مدیریت افزونه‌ها';
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form->schema([]);
+        return $schema->schema([]);
     }
 
     public static function table(Table $table): Table

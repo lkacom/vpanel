@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Artisan;
 use Filament\Notifications\Notification;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
-use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Forms\Components\FileUpload;
 use ZipArchive;
 
@@ -16,11 +16,11 @@ class ModuleManager extends Page implements HasForms
 {
     use InteractsWithForms;
 
-    protected static ?string $navigationIcon = 'heroicon-o-puzzle-piece';
-    protected static string $view = 'filament.pages.module-manager';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-puzzle-piece';
+    protected string $view = 'filament.pages.module-manager';
     protected static ?string $navigationLabel = 'نصب افزونه';
     protected static ?string $title = 'مدیریت افزونه‌ها';
-    protected static ?string $navigationGroup = 'مدیریت افزونه‌ها';
+    protected static string|\UnitEnum|null $navigationGroup = 'مدیریت افزونه‌ها';
     protected static ?int $navigationSort = 4;
 
     public static function getNavigationBadge(): ?string
@@ -59,7 +59,7 @@ class ModuleManager extends Page implements HasForms
 
     }
 
-    public function form(Form $form): Form
+    public function form(Schema $schema): Schema
     {
         return $form
             ->schema([

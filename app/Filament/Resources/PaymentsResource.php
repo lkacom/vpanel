@@ -11,7 +11,7 @@ use App\Models\Setting;
 use App\Models\Transaction;
 use App\Services\MarzbanService;
 use Filament\Forms;
-use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
@@ -33,13 +33,13 @@ class PaymentsResource extends Resource
     protected static ?string $model = Transaction::class;
 
 
-    protected static ?string $navigationIcon = 'heroicon-o-currency-dollar';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-currency-dollar';
     protected static ?string $navigationLabel = 'تاریخچه تراکنش ها';
     protected static ?string $modelLabel = 'تراکنش';
     protected static ?string $pluralModelLabel = ' تراکنش های مالی';
-    protected static ?string $navigationGroup = 'مدیریت مالی';
+    protected static string|\UnitEnum|null $navigationGroup = 'مدیریت مالی';
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
         return $form
             ->schema([

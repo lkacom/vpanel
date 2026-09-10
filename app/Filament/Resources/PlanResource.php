@@ -5,7 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\PlanResource\Pages;
 use App\Models\Plan;
 use Filament\Forms;
-use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -16,15 +16,15 @@ class PlanResource extends Resource
 {
     protected static ?string $model = Plan::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-rectangle-stack';
 
-    protected static ?string $navigationGroup = 'تنظیمات';
+    protected static string|\UnitEnum|null $navigationGroup = 'تنظیمات';
 
     protected static ?string $navigationLabel = ' پکیج های فروش';
     protected static ?string $pluralModelLabel = ' پکیج ها';
     protected static ?string $modelLabel = 'پکیج جدید';
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
         return $form
             ->schema([

@@ -3,12 +3,12 @@
 namespace App\Filament\Pages;
 
 use App\Models\Setting;
-use Filament\Forms\Components\Section;
+use Filament\Schemas\Components\Section;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
-use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 
@@ -16,10 +16,10 @@ class ManageTrialSettings extends Page implements HasForms
 {
     use InteractsWithForms;
 
-    protected static ?string $navigationGroup = 'تنظیمات';
-    protected static ?string $navigationIcon = 'heroicon-o-sparkles';
+    protected static string|\UnitEnum|null $navigationGroup = 'تنظیمات';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-sparkles';
     protected static ?string $navigationLabel = 'فعالسازی اکانت تست';
-    protected static string $view = 'filament.pages.manage-trial-settings';
+    protected string $view = 'filament.pages.manage-trial-settings';
     protected static ?int $navigationSort = 3;
 
 
@@ -38,7 +38,7 @@ class ManageTrialSettings extends Page implements HasForms
         ]);
     }
 
-    public function form(Form $form): Form
+    public function form(Schema $schema): Schema
     {
         return $form
             ->schema([

@@ -5,7 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\UserResource\Pages;
 use App\Models\User;
 use Filament\Forms;
-use Filament\Forms\Form;
+use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Notifications\Notification;
@@ -20,8 +20,8 @@ class UserResource extends Resource
 {
     protected static ?string $model = User::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-users';
-    protected static ?string $navigationGroup = 'مدیریت کاربران';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-users';
+    protected static string|\UnitEnum|null $navigationGroup = 'مدیریت کاربران';
 
     protected static ?string $navigationLabel = 'کاربران سایت';
     protected static ?string $pluralModelLabel = 'کاربران سایت';
@@ -30,9 +30,9 @@ class UserResource extends Resource
     {
         return static::$model::count();
     }
-    protected static ?string $navigationBadgeTooltip = 'تعداد کاربران';
+    protected static string|\Illuminate\Contracts\Support\Htmlable|null $navigationBadgeTooltip = 'تعداد کاربران';
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
         return $form
             ->schema([
