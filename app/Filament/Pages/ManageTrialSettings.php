@@ -32,8 +32,8 @@ class ManageTrialSettings extends Page implements HasForms
         $settings = Setting::all()->pluck('value', 'key')->toArray();
         $this->form->fill([
             'trial_enabled' => $settings['trial_enabled'] ?? false,
-            'trial_volume_mb' => $settings['trial_volume_mb'] ?? 500,
-            'trial_duration_hours' => $settings['trial_duration_hours'] ?? 24,
+            'trial_volume_mb' => $settings['trial_volume_mb'] ?? 1,
+            'trial_duration_hours' => $settings['trial_duration_hours'] ?? 3,
             'trial_limit_per_user' => $settings['trial_limit_per_user'] ?? 1,
         ]);
     }
@@ -47,25 +47,25 @@ class ManageTrialSettings extends Page implements HasForms
                     ->schema([
                         Toggle::make('trial_enabled')
                             ->label('فعال‌سازی اکانت تست')
-                            ->helperText('اگر فعال باشد، کاربران می‌توانند از ربات اکانت تست دریافت کنند.'),
+                            ->helperText('اگر فعال باشد، کاربران می‌توانند از حساب کاربری خود اکانت رایگان دریافت کنند.'),
 
                         TextInput::make('trial_volume_mb')
-                            ->label('حجم اکانت تست (مگابایت)')
+                            ->label('حجم اکانت تست (GB)')
                             ->numeric()
                             ->required()
-                            ->helperText('حجمی که به کاربر تست اختصاص داده می‌شود. مثلا: 500'),
+                            ->helperText('حجمی که به کاربر تست اختصاص داده می‌شود.'),
 
                         TextInput::make('trial_duration_hours')
-                            ->label('مدت زمان اکانت تست (ساعت)')
+                            ->label('مدت زمان اکانت تست (روز)')
                             ->numeric()
                             ->required()
-                            ->helperText('اکانت تست پس از چند ساعت منقضی می‌شود. مثلا: 24 برای یک روز.'),
+                            ->helperText('اعتبار اکانت تست به تعداد روز'),
 
                         TextInput::make('trial_limit_per_user')
                             ->label('محدودیت هر کاربر')
                             ->numeric()
                             ->required()
-                            ->helperText('هر کاربر چند بار مجاز به دریافت اکانت تست است؟ مثلا: 1'),
+                            ->helperText('تعداد اکانتی که هر کاربر مجاز به دریافت آن است.'),
                     ])
             ])
             ->statePath('data');

@@ -27,9 +27,9 @@ class VpnSettings extends Page implements HasForms
 
     protected string $view = 'filament.pages.vpn-settings';
 
-    protected static ?string $navigationLabel = 'افزودن سرور v2ray';
+    protected static ?string $navigationLabel = 'پیکربندی سرور v2ray';
 
-    protected static ?string $title = 'افزودن سرور جدید';
+    protected static ?string $title = 'اتصال سرور v2ray';
 
     protected static string|\UnitEnum|null $navigationGroup = 'تنظیمات';
 
@@ -72,7 +72,7 @@ class VpnSettings extends Page implements HasForms
     {
         return $schema
             ->schema([
-                Section::make('تنظیمات اتصال پنل')
+                Section::make('تنظیمات پنل v2ray')
                     ->schema([
                         Radio::make('panel_type')
                             ->label('نوع پنل')

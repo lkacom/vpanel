@@ -20,7 +20,7 @@
             </div>
 
             <div class="text-sm text-center text-black-500 dark:text-gray-400">
-                <div>نسخه فعلی: v1.0.0</div>
+                <div>نسخه : v1.0.0</div>
 
             </div>
             <!-- کادر آخر -->
