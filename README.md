@@ -107,27 +107,6 @@ wget -O install.sh https://raw.githubusercontent.com/lkacom/vpanel/main/install.
 
 پس از نصب، اطلاعات ورود اولیهٔ پنل مدیریت به‌صورت پیش‌فرض `admin@example.com` و `admin` است. برای نصب جدید می‌توانید پیش از اجرای seeder مقادیر `ADMIN_EMAIL` و `ADMIN_PASSWORD` را در فایل `.env` تغییر دهید و پس از اولین ورود، رمز عبور مدیر را عوض کنید.
 
-### اجرای تست‌ها
-
-تست‌های پروژه به‌صورت رسمی با **MySQL** اجرا می‌شوند تا با محیط عملیاتی پروژه یکسان باشند؛ SQLite برای تست یا نصب پروژه پشتیبانی نمی‌شود. برای اجرای تست‌ها، ابتدا یک دیتابیس و کاربر آزمایشی بسازید:
-
-```sql
-CREATE DATABASE vpanel_testing CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE USER 'vpanel_test'@'127.0.0.1' IDENTIFIED BY 'vpanel_test_password';
-GRANT ALL PRIVILEGES ON vpanel_testing.* TO 'vpanel_test'@'127.0.0.1';
-FLUSH PRIVILEGES;
-```
-
-سپس فایل محیط تست را بسازید و تست‌ها را در ریشهٔ پروژه اجرا کنید:
-
-```bash
-cp .env.example .env.testing
-composer install
-php artisan key:generate --env=testing
-php artisan test
-```
-
-تست‌ها قبل از هر اجرا schema را با `RefreshDatabase` آماده می‌کنند. مقادیر اتصال پیش‌فرض در `.env.testing.example` و `phpunit.xml` تعریف شده‌اند و در صورت نیاز می‌توان آن‌ها را با متغیرهای محیطی محیط اجرا جایگزین کرد.
 
 ## 🔄 آپدیت پروژه
 
