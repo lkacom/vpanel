@@ -30,7 +30,7 @@ class StatsOverview extends BaseWidget
 
         $totalPaidOrders = Order::where('status', 'paid')->whereNull('payment_method')->count();
 
-        $totalUsers = Order::where('status', 'pending')->count();
+        $totalUsers = Order::where('status', 'pending')->whereNotNull('payment_method')->count();
 
 
         $latestOrder = Order::where('status', 'paid')
