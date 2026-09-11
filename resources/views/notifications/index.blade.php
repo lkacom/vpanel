@@ -109,7 +109,7 @@
                                        class="block pr-10"> {{-- pr-10 برای جبران فضای دکمه‌ها --}}
                                         <p class="font-bold text-lg" :class="{ 'text-indigo-600 dark:text-indigo-400': !isRead, 'text-gray-700 dark:text-gray-300': isRead }">{{ $notification->title }}</p>
                                         <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">{{ Str::limit($notification->message, 200) }}</p>
-                                        <span class="text-xs text-gray-500 dark:text-gray-400 block mt-2">{{ $notification->created_at->diffForHumans() }}</span>
+                                        <span class="text-xs text-gray-500 dark:text-gray-400 block mt-2">{{ \App\Support\PersianDate::format($notification->created_at) }}</span>
                                     </a>
                                 </div>
                             @endforeach

@@ -8,6 +8,7 @@ use Filament\Resources\Pages\ViewRecord;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\FileUpload;
 use Filament\Notifications\Notification;
+use App\Support\PersianDate;
 use Illuminate\Support\Facades\Auth;
 use Filament\Schemas\Schema;
 use Filament\Infolists\Components;
@@ -18,7 +19,7 @@ class ViewTicket extends ViewRecord
 
     public function infolist(Schema $schema): Schema
     {
-        return $infolist
+        return $schema
             ->schema([
                 Components\Section::make('اطلاعات تیکت')
                     ->schema([
@@ -38,7 +39,9 @@ class ViewTicket extends ViewRecord
                                 'closed' => 'بسته شده',
                                 default => $state,
                             }),
-                        Components\TextEntry::make('updated_at')->label('آخرین بروزرسانی')->since(),
+                        Components\TextEntry::make('updated_at')
+                            ->label('آخرین بروزرسانی')
+                            ->formatStateUsing(fn ($state): string => PersianDate::format($state)),
                     ])->columns(2),
 
                 Components\Section::make('تاریخچه مکالمه')

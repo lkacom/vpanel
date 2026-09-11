@@ -15,7 +15,7 @@
                         <div class="p-4 rounded-lg {{ $reply->user->is_admin ? 'bg-blue-50 dark:bg-gray-800/50 ml-8' : 'bg-green-50 dark:bg-green-800/50 mr-8' }} text-right">
                             <p class="font-bold text-gray-900 dark:text-gray-100">
                                 {{ $reply->user->name }}
-                                <span class="text-xs text-gray-500 font-normal">({{ $reply->created_at->diffForHumans() }})</span>
+                                <span class="text-xs text-gray-500 font-normal">({{ \App\Support\PersianDate::format($reply->created_at) }})</span>
                             </p>
                             <p class="mt-2 text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{{ $reply->message }}</p>
 

@@ -1,11 +1,17 @@
 <x-filament-panels::page>
+    <form wire:submit="saveConnection" class="space-y-6">
+        {{ $this->connectionForm }}
 
-    <form wire:submit="submit">
-        {{ $this->form }}
+        <x-filament::button type="submit" color="primary">
+            ذخیره تنظیمات اتصال و Sync با سرور
+        </x-filament::button>
+    </form>
 
+    <form wire:submit="saveInbound" class="mt-8 space-y-6">
+        {{ $this->inboundForm }}
 
-        <div class="mt-5" >
-
-        </div>
+        <x-filament::button type="submit" color="success">
+            ذخیره Inbound
+        </x-filament::button>
     </form>
 </x-filament-panels::page>

@@ -11,7 +11,7 @@
         ])>
             <div class="flex justify-between items-center">
                 <p class="font-bold text-gray-900 dark:text-gray-100">{{ $reply->user->name }}</p>
-                <span class="text-xs text-gray-500">{{ $reply->created_at->diffForHumans() }}</span>
+                <span class="text-xs text-gray-500">{{ \App\Support\PersianDate::format($reply->created_at) }}</span>
             </div>
             <p class="mt-2 text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{{ $reply->message }}</p>
 

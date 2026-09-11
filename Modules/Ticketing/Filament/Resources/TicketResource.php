@@ -10,6 +10,7 @@ use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use App\Support\PersianDate;
 use Modules\Ticketing\Models\Ticket;
 use Nwidart\Modules\Facades\Module;
 
@@ -129,7 +130,7 @@ class TicketResource extends Resource
 
                 Tables\Columns\TextColumn::make('updated_at')
                     ->label('آخرین بروزرسانی')
-                    ->since()
+                    ->formatStateUsing(fn ($state): string => PersianDate::format($state))
                     ->sortable(),
             ])
             ->defaultSort('updated_at', 'desc')

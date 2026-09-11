@@ -139,6 +139,11 @@ class SanaeiXUIService extends AbstractXUIService
                 return;
             }
         } catch (\Throwable) {
+            // Prefer the documented v3+ endpoint when a probe is blocked or
+            // unavailable. addClientModern() still falls back to the legacy
+            // endpoint when the panel rejects the modern request.
+            $this->isModernPanel = true;
+            return;
         }
 
         $this->isModernPanel = false;

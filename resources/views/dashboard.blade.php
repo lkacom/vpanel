@@ -46,7 +46,7 @@
                            class="block px-4 py-2 text-sm font-semibold text-indigo-600 dark:text-indigo-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition duration-150 ease-in-out">
                             <p class="font-bold">{{ $notification->title }}</p>
                             <p class="text-xs text-gray-500">{{ Str::limit($notification->message, 50) }}</p>
-                            <span class="text-xs text-gray-400">{{ $notification->created_at->diffForHumans() }}</span>
+                            <span class="text-xs text-gray-400">{{ \App\Support\PersianDate::format($notification->created_at) }}</span>
                         </a>
                     @empty
                         <div class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300">
@@ -151,7 +151,7 @@
                                             </div>
                                             <div>
                                                 <span class="text-xs text-gray-500">تاریخ انقضا</span>
-                                                <p class="font-mono text-gray-900 dark:text-white" dir="ltr">{{ $order->expires_at ? \Carbon\Carbon::parse($order->expires_at)->format('Y-m-d') : '-' }}</p>
+                                                <p class="font-mono text-gray-900 dark:text-white" dir="ltr">{{ \App\Support\PersianDate::format($order->expires_at, 'Y/m/d') }}</p>
                                             </div>
                                             <div class="text-left sm:text-right md:text-left mt-4 sm:mt-0">
                                                 <div class="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-2 sm:space-x-reverse">
@@ -221,7 +221,7 @@
                                         <div>
                                             <span class="text-xs text-gray-500">تاریخ</span>
                                             <p class="font-mono text-gray-900 dark:text-white" dir="ltr">
-                                                {{ $transaction->created_at->format('Y-m-d') }}
+                                                {{ \App\Support\PersianDate::format($transaction->created_at, 'Y/m/d') }}
                                             </p>
                                         </div>
                                         <div class="text-left sm:text-right md:text-left mt-4 sm:mt-0">
@@ -447,10 +447,10 @@
                                     <a href="{{ route('tickets.show', $ticket->id) }}" class="block p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition">
                                         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center">
                                             <p class="font-semibold text-gray-800 dark:text-gray-200 mb-2 sm:mb-0">{{ $ticket->subject }}</p>
-                                            <span class="text-xs font-mono text-gray-500">{{ $ticket->created_at->format('Y-m-d') }}</span>
+                                            <span class="text-xs font-mono text-gray-500">{{ \App\Support\PersianDate::format($ticket->created_at, 'Y/m/d') }}</span>
                                         </div>
                                         <div class="mt-2 flex flex-col sm:flex-row justify-between items-start sm:items-center">
-                                            <span class="text-sm text-gray-600 dark:text-gray-400 mb-2 sm:mb-0">آخرین بروزرسانی: {{ $ticket->updated_at->diffForHumans() }}</span>
+                                            <span class="text-sm text-gray-600 dark:text-gray-400 mb-2 sm:mb-0">آخرین بروزرسانی: {{ \App\Support\PersianDate::format($ticket->updated_at) }}</span>
                                             <span class="text-xs px-2 py-1 rounded-full
                                                 @switch($ticket->status)
                                                     @case('open') bg-blue-100 text-blue-800 @break

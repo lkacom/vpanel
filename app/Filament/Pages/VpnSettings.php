@@ -7,17 +7,15 @@ use App\Models\Setting;
 use App\Services\MarzbanService;
 use App\Services\XUIServiceFactory;
 use Filament\Forms\Components\Radio;
-use Filament\Schemas\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
-use Filament\Schemas\Components\Wizard;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
-use Filament\Schemas\Schema;
-use Filament\Schemas\Components\Utilities\Get;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
-use Filament\Support\Exceptions\Halt;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -32,8 +30,10 @@ class VpnSettings extends Page implements HasForms
     protected static ?string $title = 'افزودن سرور جدید';
     protected static string|\UnitEnum|null $navigationGroup = 'تنظیمات';
 
+    public ?array $connectionData = [];
+    public ?array $inboundData = [];
+    /** @deprecated Kept for compatibility with older Livewire callers. */
     public ?array $data = [];
-    private bool $connectionFailed = false;
 
     public function mount(): void
     {
@@ -43,37 +43,36 @@ class VpnSettings extends Page implements HasForms
             if ($value === '') {
                 $settings[$key] = null;
             }
-            if ($key === 'xui_default_inbound_id' && $value !== null) {
-                $settings[$key] = (string) $value;
-            }
         }
 
         if (($settings['panel_type'] ?? null) === 'xui') {
             $settings['panel_type'] = 'sanaei';
         }
 
-        $this->form->fill(array_merge([
+        $connectionDefaults = [
             'panel_type' => 'marzban',
             'xui_host' => null,
             'xui_user' => null,
             'xui_pass' => null,
-            'xui_default_inbound_id' => null,
             'xui_link_type' => 'single',
+            'xui_subscription_url_base' => null,
             'marzban_host' => null,
             'marzban_sudo_username' => null,
             'marzban_sudo_password' => null,
-        ], $settings));
+            'marzban_node_hostname' => null,
+        ];
+
+        $this->connectionForm->fill(array_merge($connectionDefaults, $settings));
+        $this->inboundForm->fill([
+            'xui_default_inbound_id' => $settings['xui_default_inbound_id'] ?? null,
+        ]);
     }
 
-    public function form(Schema $schema): Schema
+    public function connectionForm(Schema $schema): Schema
     {
-        return $schema->schema([
-
-            Wizard::make([
-
-                /* مرحله ۱ — انتخاب پنل */
-                Wizard\Step::make('انتخاب نوع پنل')
-
+        return $schema
+            ->schema([
+                Section::make('تنظیمات اتصال پنل')
                     ->schema([
                         Radio::make('panel_type')
                             ->label('نوع پنل')
@@ -84,13 +83,9 @@ class VpnSettings extends Page implements HasForms
                             ])
                             ->live()
                             ->required(),
-                    ]),
 
-                /* مرحله ۲ — تنظیمات اتصال */
-                Wizard\Step::make('مشخصات سرور')
-                    ->schema([
                         Section::make('تنظیمات پنل مرزبان')
-                            ->visible(fn (Get $get) => $get('panel_type') === 'marzban')
+                            ->visible(fn (Get $get): bool => $get('panel_type') === 'marzban')
                             ->schema([
                                 TextInput::make('marzban_host')->label('آدرس پنل مرزبان')->required(),
                                 TextInput::make('marzban_sudo_username')->label('نام کاربری ادمین')->required(),
@@ -99,268 +94,222 @@ class VpnSettings extends Page implements HasForms
                             ]),
 
                         Section::make('تنظیمات پنل سنایی')
-                            ->visible(fn (Get $get) => in_array($get('panel_type'), ['sanaei'], true))
-                            ->schema([
-                                TextInput::make('xui_host')
-                                    ->label('آدرس کامل پنل')
-                                    ->required(fn (Get $get): bool => in_array($get('panel_type'), ['sanaei'], true)),
-                                TextInput::make('xui_user')
-                                    ->label('نام کاربری')
-                                    ->required(fn (Get $get): bool => in_array($get('panel_type'), ['sanaei'], true)),
-                                TextInput::make('xui_pass')
-                                    ->label('رمز عبور')
-                                    ->password()
-                                    ->required(fn (Get $get): bool => in_array($get('panel_type'), ['sanaei'], true)),
+                            ->visible(fn (Get $get): bool => $get('panel_type') === 'sanaei')
+                            ->schema($this->xuiConnectionSchema(['sanaei'])),
 
-                                Radio::make('xui_link_type')
-                                    ->label('نوع لینک تحویلی')
-                                    ->options(['single' => 'لینک تکی', 'subscription' => 'لینک سابسکریپشن'])
-                                    ->default('single')
-                                    ->required(fn (Get $get): bool => in_array($get('panel_type'), ['sanaei'], true)),
-
-                                TextInput::make('xui_subscription_url_base')
-                                    ->label('آدرس پایه لینک سابسکریپشن'),
-                            ]),
                         Section::make('تنظیمات پنل علیرضا')
-                            ->visible(fn (Get $get) => in_array($get('panel_type'), ['txui'], true))
-                            ->schema([
-                                TextInput::make('xui_host')
-                                    ->label('آدرس کامل پنل')
-                                    ->required(fn (Get $get): bool => in_array($get('panel_type'), ['txui'], true)),
-                                TextInput::make('xui_user')
-                                    ->label('نام کاربری')
-                                    ->required(fn (Get $get): bool => in_array($get('panel_type'), ['txui'], true)),
-                                TextInput::make('xui_pass')
-                                    ->label('رمز عبور')
-                                    ->password()
-                                    ->required(fn (Get $get): bool => in_array($get('panel_type'), ['txui'], true)),
+                            ->visible(fn (Get $get): bool => $get('panel_type') === 'txui')
+                            ->schema($this->xuiConnectionSchema(['txui'])),
+                    ]),
+            ])
+            ->statePath('connectionData');
+    }
 
-                                Radio::make('xui_link_type')
-                                    ->label('نوع لینک تحویلی')
-                                    ->options(['single' => 'لینک تکی', 'subscription' => 'لینک سابسکریپشن'])
-                                    ->default('single')
-                                    ->required(fn (Get $get): bool => in_array($get('panel_type'), ['txui'], true)),
-
-                                TextInput::make('xui_subscription_url_base')
-                                    ->label('آدرس پایه لینک سابسکریپشن'),
-                            ]),
-                    ])
-
-                    ->afterValidation(function () {
-                        if (!$this->submit(initialSave: true)) {
-                            throw new Halt;
-                        }
-                    }),
-
-                /* مرحله ۳ — انتخاب ورودی پیش‌فرض */
-                Wizard\Step::make('انتخاب "ورودی" پیش‌فرض ')
-                    ->icon('heroicon-o-chevron-up-down')
+    public function inboundForm(Schema $schema): Schema
+    {
+        return $schema
+            ->schema([
+                Section::make('Inbound پیش‌فرض')
+                    ->description('تغییر این مقدار فقط تنظیمات Inbound را ذخیره می‌کند و اطلاعات پنل دوباره اعتبارسنجی نمی‌شود.')
                     ->schema([
                         Select::make('xui_default_inbound_id')
-                            ->label('ورودی پیش‌فرض')
-                            ->options(function () {
-                                $inbounds = Inbound::query()
-                                    ->whereNotNull('inbound_data')
-                                    ->get();
-
-                                $options = [];
-                                foreach ($inbounds as $inbound) {
-                                    $data = $inbound->inbound_data;
-                                    if (!is_array($data) || !isset($data['id']) || !isset($data['enable']) || $data['enable'] !== true) {
-                                        continue;
-                                    }
-                                    $panelId = (string) $data['id'];
-                                    $label = $inbound->dropdown_label;
-                                    if (!is_string($label)) {
-                                        $label = strip_tags(json_encode($label));
-                                    }
-                                    $options[$panelId] = $label;
-                                }
-
-                                ksort($options);
-                                return $options;
-                            })
+                            ->label('Inbound پیش‌فرض')
+                            ->options(fn (): array => $this->inboundOptions())
                             ->native(false)
                             ->preload()
                             ->allowHtml()
                             ->placeholder('یک اینباند انتخاب کنید')
-                            ->helperText('در صورت ذخیره تغییرات اطلاعات فعلی جایگزین اطلاعات ذخیره شده قبلی خواهد شد.')
+                            ->helperText('فقط مقدار xui_default_inbound_id تغییر خواهد کرد.'),
                     ]),
-
-            ])->statePath('data')
-                ->submitAction(
-                    \Filament\Actions\Action::make('save')
-                        ->label('ذخیره تغییرات')
-                        ->color('success')
-                        ->button()
-                        ->action('submitForm')
-                ),
-
-        ]);
+            ])
+            ->statePath('inboundData');
     }
 
-    /**
-     * متد برای رفع مشکل Submit
-     */
-    public function submitForm(): void
+    /** @return array<string, string> */
+    private function xuiConnectionSchema(array $panelTypes): array
     {
-        $this->submit(initialSave: false);
+        $required = fn (Get $get): bool => in_array($get('panel_type'), $panelTypes, true);
+
+        return [
+            TextInput::make('xui_host')->label('آدرس کامل پنل')->required($required),
+            TextInput::make('xui_user')->label('نام کاربری')->required($required),
+            TextInput::make('xui_pass')->label('رمز عبور')->password()->required($required),
+            Radio::make('xui_link_type')
+                ->label('نوع لینک تحویلی')
+                ->options(['single' => 'لینک تکی', 'subscription' => 'لینک سابسکریپشن'])
+                ->default('single')
+                ->required($required),
+            TextInput::make('xui_subscription_url_base')->label('آدرس پایه لینک سابسکریپشن'),
+        ];
     }
 
-    /**
-     * SUBMIT — دو حالت دارد:
-     * 1. initialSave = true → مرحله ۲ ذخیره + Sync
-     * 2. مرحله پایانی → ذخیره نهایی ورودی پیش‌فرض
-     */
-    public function submit(bool $initialSave = false): bool
+    /** @return array<string, string> */
+    private function inboundOptions(): array
+    {
+        $options = [];
+
+        foreach (Inbound::query()->whereNotNull('inbound_data')->get() as $inbound) {
+            $data = $inbound->inbound_data;
+            if (! is_array($data) || ! isset($data['id']) || ($data['enable'] ?? false) !== true) {
+                continue;
+            }
+
+            $label = $inbound->dropdown_label;
+            $options[(string) $data['id']] = is_string($label)
+                ? $label
+                : strip_tags((string) json_encode($label));
+        }
+
+        ksort($options);
+
+        return $options;
+    }
+
+    public function saveConnection(): void
     {
         try {
-            $this->form->validate();
+            $this->connectionForm->validate();
+            $formData = $this->connectionForm->getState();
+            $panelType = $formData['panel_type'] ?? null;
 
-            $formData = $this->form->getState()['data'] ?? [];
-
-            /* اگر مرحله دوم است → Sync انجام می‌شود */
-            if ($initialSave) {
-                $panelType = $formData['panel_type'] ?? null;
-
-                if ($panelType === 'xui') {
-                    $panelType = 'sanaei';
-                    $formData['panel_type'] = $panelType;
-                }
-
-                if (in_array($panelType, ['sanaei', 'txui'], true)) {
-                    $xui = XUIServiceFactory::make(
-                        $panelType,
-                        (string) ($formData['xui_host'] ?? ''),
-                        (string) ($formData['xui_user'] ?? ''),
-                        (string) ($formData['xui_pass'] ?? '')
-                    );
-
-                    if (!$xui->login()) {
-                        Notification::make()
-                            ->title('خطا در اتصال')
-                            ->body('نام کاربری یا رمز عبور اشتباه است یا سرور در دسترس نیست.')
-                            ->danger()
-                            ->send();
-                        return false;
-                    }
-
-                    $inbounds = collect($xui->getInbounds())
-                        ->filter(fn ($inbound): bool => is_array($inbound) && isset($inbound['id']))
-                        ->keyBy(fn (array $inbound): string => (string) $inbound['id'])
-                        ->values()
-                        ->all();
-
-                    if (empty($inbounds)) {
-                        Notification::make()
-                            ->title('خطا در دریافت اینباندها')
-                            ->body('سرور در دسترس نیست یا اینباندی موجود نیست.')
-                            ->danger()
-                            ->send();
-                        return false;
-                    }
-                    $inboundIds = array_map(
-                        static fn (array $inbound): string => (string) $inbound['id'],
-                        $inbounds
-                    );
-                    $configuredInboundId = $formData['xui_default_inbound_id'] ?? null;
-                    if ($configuredInboundId !== null && $configuredInboundId !== ''
-                        && !in_array((string) $configuredInboundId, $inboundIds, true)) {
-                        $formData['xui_default_inbound_id'] = null;
-                        $this->data['xui_default_inbound_id'] = null;
-                    }
-
-                    DB::transaction(function () use ($formData, $inbounds): void {
-                        // delete() remains transactional; truncate() would issue an implicit MySQL commit.
-                        Inbound::query()->delete();
-
-                        foreach ($inbounds as $inbound) {
-                            Inbound::create([
-                                'title' => $inbound['remark'] ?? "Inbound {$inbound['id']}",
-                                'inbound_data' => $inbound,
-                            ]);
-                        }
-
-                        foreach ($formData as $key => $value) {
-                            Setting::updateOrCreate(['key' => $key], ['value' => $value ?? '']);
-                        }
-                    });
-
-                    Cache::forget('settings');
-
-                    $synced = count($inbounds);
-
-                    Cache::forget('inbounds_dropdown');
-
-                    Notification::make()
-                        ->title('همگام‌سازی موفق')
-                        ->body("{$synced} اینباند با موفقیت Sync شد.")
-                        ->success()
-                        ->send();
-
-                } elseif ($panelType === 'marzban') {
-                    $marzban = new MarzbanService(
-                        $formData['marzban_host'] ?? '',
-                        $formData['marzban_sudo_username'] ?? '',
-                        $formData['marzban_sudo_password'] ?? '',
-                        $formData['marzban_node_hostname'] ?? ''
-                    );
-
-                    if (!$marzban->login()) {
-                        Notification::make()
-                            ->title('خطا در اتصال به مرزبان')
-                            ->body('نام کاربری یا رمز عبور مرزبان صحیح نیست یا آدرس پنل در دسترس نمی‌باشد.')
-                            ->danger()
-                            ->send();
-                        return false;
-                    }
-
-                    foreach ($formData as $key => $value) {
-                        Setting::updateOrCreate(['key' => $key], ['value' => $value ?? '']);
-                    }
-
-                    Cache::forget('settings');
-
-                    Notification::make()
-                        ->title('تنظیمات ذخیره شد')
-                        ->success()
-                        ->send();
-                }
-
-                return true;
+            if ($panelType === 'xui') {
+                $panelType = 'sanaei';
+                $formData['panel_type'] = $panelType;
             }
 
-            /* ذخیره نهایی مرحله آخر */
-            foreach ($formData as $key => $value) {
-                Setting::updateOrCreate(['key' => $key], ['value' => $value ?? '']);
+            if (in_array($panelType, ['sanaei', 'txui'], true)) {
+                $xui = XUIServiceFactory::make(
+                    $panelType,
+                    (string) ($formData['xui_host'] ?? ''),
+                    (string) ($formData['xui_user'] ?? ''),
+                    (string) ($formData['xui_pass'] ?? '')
+                );
+
+                if (! $xui->login()) {
+                    $this->notifyError('خطا در اتصال', 'نام کاربری یا رمز عبور اشتباه است یا سرور در دسترس نیست.');
+                    return;
+                }
+
+                $inbounds = collect($xui->getInbounds())
+                    ->filter(fn ($inbound): bool => is_array($inbound) && isset($inbound['id']))
+                    ->keyBy(fn (array $inbound): string => (string) $inbound['id'])
+                    ->values()
+                    ->all();
+
+                if (empty($inbounds)) {
+                    $this->notifyError('خطا در دریافت اینباندها', 'سرور در دسترس نیست یا اینباندی موجود نیست.');
+                    return;
+                }
+
+                $inboundIds = array_map(
+                    static fn (array $inbound): string => (string) $inbound['id'],
+                    $inbounds,
+                );
+                $currentDefaultInbound = Setting::where('key', 'xui_default_inbound_id')->value('value');
+                if ($currentDefaultInbound !== null
+                    && $currentDefaultInbound !== ''
+                    && ! in_array((string) $currentDefaultInbound, $inboundIds, true)) {
+                    Setting::updateOrCreate(
+                        ['key' => 'xui_default_inbound_id'],
+                        ['value' => ''],
+                    );
+                    $this->inboundForm->fill(['xui_default_inbound_id' => null]);
+                }
+
+                DB::transaction(function () use ($formData, $inbounds): void {
+                    Inbound::query()->delete();
+                    foreach ($inbounds as $inbound) {
+                        Inbound::create([
+                            'title' => $inbound['remark'] ?? "Inbound {$inbound['id']}",
+                            'inbound_data' => $inbound,
+                        ]);
+                    }
+                    $this->saveSettings($formData);
+                });
+
+                Cache::forget('inbounds_dropdown');
+                $this->notifySuccess('همگام‌سازی موفق', count($inbounds) . ' اینباند با موفقیت Sync شد.');
+                return;
             }
+
+            if ($panelType === 'marzban') {
+                $marzban = new MarzbanService(
+                    $formData['marzban_host'] ?? '',
+                    $formData['marzban_sudo_username'] ?? '',
+                    $formData['marzban_sudo_password'] ?? '',
+                    $formData['marzban_node_hostname'] ?? ''
+                );
+
+                if (! $marzban->login()) {
+                    $this->notifyError('خطا در اتصال به مرزبان', 'نام کاربری یا رمز عبور مرزبان صحیح نیست یا آدرس پنل در دسترس نمی‌باشد.');
+                    return;
+                }
+
+                $this->saveSettings($formData);
+                $this->notifySuccess('تنظیمات اتصال ذخیره شد');
+            }
+        } catch (\Throwable $e) {
+            Log::error('Panel connection configuration failed: ' . $e->getMessage());
+            $this->notifyError('خطا در تنظیمات', $e->getMessage());
+        }
+    }
+
+    public function saveInbound(): void
+    {
+        try {
+            $this->inboundForm->validate();
+            $inboundId = $this->inboundForm->getState()['xui_default_inbound_id'] ?? null;
+
+            Setting::updateOrCreate([
+                'key' => 'xui_default_inbound_id',
+            ], [
+                'value' => $inboundId ?? '',
+            ]);
 
             Cache::forget('settings');
-
-            Notification::make()
-                ->title('تنظیمات با موفقیت ذخیره شد')
-                ->success()
-                ->send();
-
-            return true;
-
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            Notification::make()
-                ->title('خطا در اعتبارسنجی')
-                ->body('لطفا تمام فیلدهای الزامی را پر کنید.')
-                ->danger()
-                ->send();
-
-            Log::error('Validation failed: ' . json_encode($e->errors()));
-            return false;
-        } catch (\Exception $e) {
-            Log::error('Panel configuration failed: ' . $e->getMessage());
-            Notification::make()
-                ->title('خطا در تنظیمات')
-                ->body($e->getMessage())
-                ->danger()
-                ->send();
-            return false;
+            $this->notifySuccess('Inbound پیش‌فرض ذخیره شد');
+        } catch (\Throwable $e) {
+            Log::error('Default inbound configuration failed: ' . $e->getMessage());
+            $this->notifyError('خطا در ذخیره Inbound', $e->getMessage());
         }
+    }
+
+    /**
+     * Compatibility bridge for older Livewire callers. The page UI uses the
+     * independent saveConnection() and saveInbound() actions instead.
+     */
+    public function submit(bool $initialSave = false): void
+    {
+        if ($initialSave) {
+            $this->connectionForm->fill($this->data ?? []);
+            $this->saveConnection();
+            return;
+        }
+
+        $this->inboundForm->fill($this->data ?? []);
+        $this->saveInbound();
+    }
+
+    /** @param array<string, mixed> $settings */
+    private function saveSettings(array $settings): void
+    {
+        foreach ($settings as $key => $value) {
+            Setting::updateOrCreate(['key' => $key], ['value' => $value ?? '']);
+        }
+        Cache::forget('settings');
+    }
+
+    private function notifySuccess(string $title, ?string $body = null): void
+    {
+        $notification = Notification::make()->title($title)->success();
+        if ($body !== null) {
+            $notification->body($body);
+        }
+        $notification->send();
+    }
+
+    private function notifyError(string $title, string $body): void
+    {
+        Notification::make()->title($title)->body($body)->danger()->send();
     }
 }

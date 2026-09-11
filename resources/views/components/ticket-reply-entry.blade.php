@@ -11,7 +11,7 @@
 ])>
     <p class="font-bold text-gray-900 dark:text-gray-100">
         {{ $user->name }}
-        <span class="text-xs text-gray-500 font-normal">({{ $reply->created_at->diffForHumans() }})</span>
+        <span class="text-xs text-gray-500 font-normal">({{ \App\Support\PersianDate::format($reply->created_at) }})</span>
     </p>
     <p class="mt-2 text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{{ $reply->message }}</p>
 </div>
