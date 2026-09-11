@@ -56,7 +56,7 @@ class StatsOverview extends BaseWidget
                 ])
                 ->color(Color::Lime),
 
-            Stat::make('سفارشات معلق', $totalUsers)
+            Stat::make('درخواست  شارژ', $totalUsers)
                 ->description('سفارشات در انتظار تایید')
                 ->descriptionIcon('heroicon-m-x-circle',IconPosition::Before)
                 ->color('warning'),
