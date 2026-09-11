@@ -102,14 +102,10 @@ class OrderResource extends Resource
     {
         return $table
             ->columns([
-                IconColumn::make('source')->label('منبع')->toggleable()->icon(fn (?string $state): string => match ($state) {
-                    'web' => 'heroicon-o-globe-alt', default => 'heroicon-o-question-mark-circle'
-                })->color(fn (?string $state): string => match ($state) {
-                    'web' => 'primary', default => 'gray'
-                }),
+
 
                 ImageColumn::make('card_payment_receipt')->label('رسید')->disk('public')->toggleable()->size(60)->url(fn (Order $record): ?string => $record->card_payment_receipt ? Storage::disk('public')->url($record->card_payment_receipt) : null)->openUrlInNewTab(),
-                TextColumn::make('user.name')->label('کاربر')->searchable()->sortable(),
+                TextColumn::make('user.email')->label('کاربر')->searchable()->sortable(),
                 TextColumn::make('plan.name')->label('عنوان')->default(fn (Order $record): string => $record->plan_id ? $record->plan->name : 'شارژ کیف پول')->description(function (Order $record): string {
                     if ($record->renews_order_id) {
                         return ' (تمدید سفارش #'.$record->renews_order_id.')';
