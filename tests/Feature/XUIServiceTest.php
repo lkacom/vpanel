@@ -265,6 +265,7 @@ it('synchronizes inbounds only after either configured XUI panel is authenticate
         expect(Inbound::query()->count())->toBe(1)
             ->and(Inbound::query()->sole()->inbound_data['id'])->toBe(12)
             ->and(Setting::where('key', 'panel_type')->value('value'))->toBe($panelType)
-            ->and(Setting::where('key', 'xui_default_inbound_id')->value('value'))->toBe('');
+            // The global default is no longer changed; each plan owns its inbound.
+            ->and(Setting::where('key', 'xui_default_inbound_id')->value('value'))->toBe('999');
     }
 });

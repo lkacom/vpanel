@@ -14,7 +14,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use App\Models\Notification;
 
 class OrderController extends Controller
 {
@@ -93,7 +92,7 @@ class OrderController extends Controller
         Auth::user()->notifications()->create([
             'type' => 'wallet_charge_pending',
             'title' => 'درخواست شارژ کیف پول ثبت شد!',
-            'message' => "سفارش شارژ کیف پول به مبلغ " . number_format($request->amount) . " تومان در انتظار پرداخت شماست.",
+            'message' => 'سفارش شارژ کیف پول به مبلغ '.number_format($request->amount).' تومان در انتظار پرداخت شماست.',
             'link' => route('order.show', $order->id),
         ]);
 
@@ -143,6 +142,7 @@ class OrderController extends Controller
             'message' => "رسید پرداخت سفارش #{$order->id} با موفقیت دریافت شد و در انتظار تایید مدیر است.",
             'link' => route('order.show', $order->id),
         ]);
+
         return redirect()->route('dashboard')->with('status', 'رسید شما با موفقیت ارسال شد. پس از تایید توسط مدیر، سرویس شما فعال خواهد شد.');
     }
 
@@ -154,7 +154,7 @@ class OrderController extends Controller
         if (auth()->id() !== $order->user_id) {
             abort(403);
         }
-        if (!$order->plan) {
+        if (! $order->plan) {
             return redirect()->back()->with('error', 'این عملیات برای شارژ کیف پول مجاز نیست.');
         }
 
@@ -173,7 +173,7 @@ class OrderController extends Controller
                 $user->notifications()->create([
                     'type' => 'wallet_deducted',
                     'title' => 'کسر از کیف پول شما',
-                    'message' => "مبلغ " . number_format($price) . " تومان برای سفارش #{$order->id} از کیف پول شما کسر شد.",
+                    'message' => 'مبلغ '.number_format($price)." تومان برای سفارش #{$order->id} از کیف پول شما کسر شد.",
                     'link' => route('dashboard', ['tab' => 'order_history']),
                 ]);
 
@@ -181,12 +181,12 @@ class OrderController extends Controller
                 $success = false;
                 $finalConfig = '';
                 $panelType = $settings->get('panel_type');
-                $isRenewal = (bool)$order->renews_order_id;
+                $isRenewal = (bool) $order->renews_order_id;
 
                 // Username برای کلاینت X-UI/Marzban
                 $uniqueUsername = $isRenewal
-                    ? "user-{$user->id}-order-" . $order->renews_order_id
-                    : "user-{$user->id}-order-" . $order->id;
+                    ? "user-{$user->id}-order-".$order->renews_order_id
+                    : "user-{$user->id}-order-".$order->id;
 
                 // محاسبه تاریخ انقضا
                 if ($isRenewal && $order->renews_order_id) {
@@ -213,7 +213,7 @@ class OrderController extends Controller
 
                     $userData = [
                         'expire' => $timestamp,
-                        'data_limit' => $plan->volume_gb * 1073741824
+                        'data_limit' => $plan->volume_gb * 1073741824,
                     ];
 
                     $response = $isRenewal
@@ -234,35 +234,35 @@ class OrderController extends Controller
                         (string) $settings->get('xui_pass')
                     );
 
-                    // دریافت اینباند پیش‌فرض
-                    $defaultInboundId = $settings->get('xui_default_inbound_id');
-                    if (empty($defaultInboundId)) {
-                        throw new \Exception('تنظیمات اینباند پیش‌فرض برای X-UI یافت نشد.');
+                    // هر پکیج Inbound مستقل خودش را دارد.
+                    $planInboundId = $plan->inbound_id;
+                    if (empty($planInboundId)) {
+                        throw new \Exception('برای این پکیج Inbound انتخاب نشده است.');
                     }
 
-                    $numericInboundId = (int) $defaultInboundId;
+                    $numericInboundId = (int) $planInboundId;
                     $inbound = Inbound::whereJsonContains('inbound_data->id', $numericInboundId)->first();
 
-                    if (!$inbound || !$inbound->inbound_data) {
-                        throw new \Exception("اینباند با ID {$defaultInboundId} در دیتابیس یافت نشد.");
+                    if (! $inbound || ! $inbound->inbound_data) {
+                        throw new \Exception("Inbound انتخاب‌شده با ID {$planInboundId} در دیتابیس یافت نشد.");
                     }
 
                     $inboundData = $inbound->inbound_data;
 
-                    if (!$xuiService->login()) {
+                    if (! $xuiService->login()) {
                         throw new \Exception('خطا در لاگین به پنل X-UI.');
                     }
 
                     $clientData = [
                         'email' => $uniqueUsername,
                         'total' => $plan->volume_gb * 1073741824,
-                        'expiryTime' => $timestamp * 1000
+                        'expiryTime' => $timestamp * 1000,
                     ];
 
                     if ($isRenewal) {
                         // تمدید: پیدا کردن کلاینت قبلی و آپدیت آن
                         $originalOrder = Order::find($order->renews_order_id);
-                        if (!$originalOrder || !$originalOrder->config_details) {
+                        if (! $originalOrder || ! $originalOrder->config_details) {
                             throw new \Exception('اطلاعات سرویس اصلی یافت نشد.');
                         }
 
@@ -277,7 +277,7 @@ class OrderController extends Controller
                             preg_match('/\/sub\/([a-zA-Z0-9]+)/', $originalConfig, $matches);
                             $subId = $matches[1] ?? null;
 
-                            if (!$subId) {
+                            if (! $subId) {
                                 throw new \Exception('شناسه اشتراک (subId) در کانفیگ قبلی یافت نشد.');
                             }
 
@@ -290,13 +290,13 @@ class OrderController extends Controller
                                 'inbound_id' => $inboundData['id'],
                                 'client_count' => count($clients),
                                 'search_subId' => $subId,
-                                'search_email' => $uniqueUsername
+                                'search_email' => $uniqueUsername,
                             ]);
 
-                            if (!empty($clients)) {
+                            if (! empty($clients)) {
                                 $client = collect($clients)->firstWhere('subId', $subId);
 
-                                if (!$client) {
+                                if (! $client) {
                                     $client = collect($clients)->firstWhere('email', $uniqueUsername);
                                 }
 
@@ -304,12 +304,12 @@ class OrderController extends Controller
                             }
 
                             // اگر کلاینت پیدا نشد
-                            if (!$clientId) {
+                            if (! $clientId) {
                                 Log::warning('Client not found for renewal, creating new client', [
                                     'inbound_id' => $inboundData['id'],
                                     'email' => $uniqueUsername,
                                     'subId' => $subId,
-                                    'reason' => empty($clients) ? 'no_clients_in_inbound' : 'client_not_found'
+                                    'reason' => empty($clients) ? 'no_clients_in_inbound' : 'client_not_found',
                                 ]);
 
                                 // ایجاد کلاینت جدید
@@ -319,14 +319,14 @@ class OrderController extends Controller
                                     $subBaseUrl = rtrim($settings->get('xui_subscription_url_base'), '/');
                                     $newSubId = $addResponse['generated_subId'];
                                     if ($subBaseUrl && $newSubId) {
-                                        $finalConfig = $subBaseUrl . '/sub/' . $newSubId;
+                                        $finalConfig = $subBaseUrl.'/sub/'.$newSubId;
                                         $success = true;
                                         session()->flash('warning', 'توجه: کلاینت قبلی در X-UI یافت نشد. یک کلاینت جدید ساخته شد.');
                                     } else {
                                         throw new \Exception('خطا در ساخت لینک سابسکریپشن جدید: آدرس پایه یا subId معتبر نیست.');
                                     }
                                 } else {
-                                    throw new \Exception('خطا در ساخت کلاینت جدید: ' . ($addResponse['msg'] ?? 'خطای نامشخص'));
+                                    throw new \Exception('خطا در ساخت کلاینت جدید: '.($addResponse['msg'] ?? 'خطای نامشخص'));
                                 }
                             } else {
                                 // کلاینت موجود را آپدیت کن
@@ -341,9 +341,9 @@ class OrderController extends Controller
                                     Log::error('XUI updateClient failed', [
                                         'response' => $response,
                                         'inbound_id' => $inboundData['id'],
-                                        'client_id' => $clientId
+                                        'client_id' => $clientId,
                                     ]);
-                                    throw new \Exception('خطا در بروزرسانی کلاینت: ' . $errorMsg);
+                                    throw new \Exception('خطا در بروزرسانی کلاینت: '.$errorMsg);
                                 }
                             }
 
@@ -352,7 +352,7 @@ class OrderController extends Controller
                             preg_match('/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/i', $originalConfig, $matches);
                             $clientId = $matches[1] ?? null;
 
-                            if (!$clientId) {
+                            if (! $clientId) {
                                 throw new \Exception('UUID کلاینت در کانفیگ قبلی یافت نشد.');
                             }
 
@@ -360,18 +360,18 @@ class OrderController extends Controller
                             $clients = $xuiService->getClients($inboundData['id']);
 
                             $client = null;
-                            if (!empty($clients)) {
+                            if (! empty($clients)) {
                                 $client = collect($clients)->firstWhere('id', $clientId);
-                                if (!$client) {
+                                if (! $client) {
                                     $client = collect($clients)->firstWhere('email', $uniqueUsername);
                                 }
                             }
 
-                            if (empty($clients) || !$client) {
+                            if (empty($clients) || ! $client) {
                                 Log::warning('Client not found for renewal (single link), creating new client', [
                                     'inbound_id' => $inboundData['id'],
                                     'email' => $uniqueUsername,
-                                    'search_client_id' => $clientId
+                                    'search_client_id' => $clientId,
                                 ]);
 
                                 $addResponse = $xuiService->addClient($inboundData['id'], $clientData);
@@ -385,7 +385,7 @@ class OrderController extends Controller
                                     }
 
                                     $parsedUrl = parse_url($settings->get('xui_host'));
-                                    $serverIpOrDomain = !empty($inboundData['listen']) ? $inboundData['listen'] : $parsedUrl['host'];
+                                    $serverIpOrDomain = ! empty($inboundData['listen']) ? $inboundData['listen'] : $parsedUrl['host'];
                                     $port = $inboundData['port'];
                                     $remark = $inboundData['remark'];
 
@@ -394,16 +394,16 @@ class OrderController extends Controller
                                         'security' => $streamSettings['security'] ?? null,
                                         'path' => $streamSettings['wsSettings']['path'] ?? ($streamSettings['grpcSettings']['serviceName'] ?? null),
                                         'sni' => $streamSettings['tlsSettings']['serverName'] ?? null,
-                                        'host' => $streamSettings['wsSettings']['headers']['Host'] ?? null
+                                        'host' => $streamSettings['wsSettings']['headers']['Host'] ?? null,
                                     ];
 
                                     $params = http_build_query(array_filter($paramsArray));
-                                    $fullRemark = $uniqueUsername . '|' . $remark;
-                                    $finalConfig = "vless://{$uuid}@{$serverIpOrDomain}:{$port}?{$params}#" . urlencode($fullRemark);
+                                    $fullRemark = $uniqueUsername.'|'.$remark;
+                                    $finalConfig = "vless://{$uuid}@{$serverIpOrDomain}:{$port}?{$params}#".urlencode($fullRemark);
                                     $success = true;
                                     session()->flash('warning', 'توجه: کلاینت قبلی در X-UI یافت نشد. یک کلاینت جدید ساخته شد.');
                                 } else {
-                                    throw new \Exception('خطا در ساخت کلاینت جدید: ' . ($addResponse['msg'] ?? 'خطای نامشخص'));
+                                    throw new \Exception('خطا در ساخت کلاینت جدید: '.($addResponse['msg'] ?? 'خطای نامشخص'));
                                 }
                             } else {
                                 $response = $xuiService->updateClient($inboundData['id'], $clientId, $clientData);
@@ -416,9 +416,9 @@ class OrderController extends Controller
                                     Log::error('XUI updateClient failed for single link', [
                                         'response' => $response,
                                         'inbound_id' => $inboundData['id'],
-                                        'client_id' => $clientId
+                                        'client_id' => $clientId,
                                     ]);
-                                    throw new \Exception('خطا در بروزرسانی کلاینت: ' . $errorMsg);
+                                    throw new \Exception('خطا در بروزرسانی کلاینت: '.$errorMsg);
                                 }
                             }
                         }
@@ -433,7 +433,7 @@ class OrderController extends Controller
                                 $subId = $response['generated_subId'];
                                 $subBaseUrl = rtrim($settings->get('xui_subscription_url_base'), '/');
                                 if ($subBaseUrl) {
-                                    $finalConfig = $subBaseUrl . '/sub/' . $subId;
+                                    $finalConfig = $subBaseUrl.'/sub/'.$subId;
                                     $success = true;
                                 }
                             } else {
@@ -445,7 +445,7 @@ class OrderController extends Controller
                                 }
 
                                 $parsedUrl = parse_url($settings->get('xui_host'));
-                                $serverIpOrDomain = !empty($inboundData['listen']) ? $inboundData['listen'] : $parsedUrl['host'];
+                                $serverIpOrDomain = ! empty($inboundData['listen']) ? $inboundData['listen'] : $parsedUrl['host'];
                                 $port = $inboundData['port'];
                                 $remark = $inboundData['remark'];
 
@@ -454,21 +454,21 @@ class OrderController extends Controller
                                     'security' => $streamSettings['security'] ?? null,
                                     'path' => $streamSettings['wsSettings']['path'] ?? ($streamSettings['grpcSettings']['serviceName'] ?? null),
                                     'sni' => $streamSettings['tlsSettings']['serverName'] ?? null,
-                                    'host' => $streamSettings['wsSettings']['headers']['Host'] ?? null
+                                    'host' => $streamSettings['wsSettings']['headers']['Host'] ?? null,
                                 ];
 
                                 $params = http_build_query(array_filter($paramsArray));
-                                $fullRemark = $uniqueUsername . '|' . $remark;
-                                $finalConfig = "vless://{$uuid}@{$serverIpOrDomain}:{$port}?{$params}#" . urlencode($fullRemark);
+                                $fullRemark = $uniqueUsername.'|'.$remark;
+                                $finalConfig = "vless://{$uuid}@{$serverIpOrDomain}:{$port}?{$params}#".urlencode($fullRemark);
                                 $success = true;
                             }
                         } else {
-                            throw new \Exception('خطا در ساخت کاربر در پنل سنایی: ' . ($response['msg'] ?? 'پاسخ نامعتبر'));
+                            throw new \Exception('خطا در ساخت کاربر در پنل سنایی: '.($response['msg'] ?? 'پاسخ نامعتبر'));
                         }
                     }
                 } // پایان شرط XUI - این آکولاد قبلا جا افتاده بود
 
-                if (!$success) {
+                if (! $success) {
                     throw new \Exception('خطا در ارتباط با سرور برای فعال‌سازی سرویس.');
                 }
 
@@ -477,7 +477,7 @@ class OrderController extends Controller
                     $originalOrder = Order::find($order->renews_order_id);
                     $originalOrder->update([
                         'config_details' => $finalConfig,
-                        'expires_at' => $newExpiresAt->format('Y-m-d H:i:s')
+                        'expires_at' => $newExpiresAt->format('Y-m-d H:i:s'),
                     ]);
 
                     $user->update(['show_renewal_notification' => true]);
@@ -491,7 +491,7 @@ class OrderController extends Controller
                 } else {
                     $order->update([
                         'config_details' => $finalConfig,
-                        'expires_at' => $newExpiresAt
+                        'expires_at' => $newExpiresAt,
                     ]);
 
                     $user->notifications()->create([
@@ -505,7 +505,7 @@ class OrderController extends Controller
                 // آپدیت وضعیت سفارش جدید
                 $order->update([
                     'status' => 'paid',
-                    'payment_method' => 'wallet'
+                    'payment_method' => 'wallet',
                 ]);
 
                 // ثبت تراکنش
@@ -515,23 +515,23 @@ class OrderController extends Controller
                     'amount' => $price,
                     'type' => 'purchase',
                     'status' => 'completed',
-                    'description' => ($isRenewal ? "تمدید سرویس" : "خرید سرویس") . " {$plan->name} از کیف پول"
+                    'description' => ($isRenewal ? 'تمدید سرویس' : 'خرید سرویس')." {$plan->name} از کیف پول",
                 ]);
 
                 OrderPaid::dispatch($order);
             });
 
         } catch (\Exception $e) {
-            Log::error('Wallet Payment Failed: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            Log::error('Wallet Payment Failed: '.$e->getMessage(), ['trace' => $e->getTraceAsString()]);
 
             Auth::user()->notifications()->create([
                 'type' => 'payment_failed',
                 'title' => 'خطا در پرداخت با کیف پول!',
-                'message' => "پرداخت سفارش شما با خطا مواجه شد: " . $e->getMessage(),
+                'message' => 'پرداخت سفارش شما با خطا مواجه شد: '.$e->getMessage(),
                 'link' => route('dashboard', ['tab' => 'order_history']),
             ]);
 
-            return redirect()->route('dashboard')->with('error', 'پرداخت با خطا مواجه شد: ' . $e->getMessage());
+            return redirect()->route('dashboard')->with('error', 'پرداخت با خطا مواجه شد: '.$e->getMessage());
         }
 
         return redirect()->route('dashboard')->with('status', 'سرویس شما با موفقیت فعال شد.');

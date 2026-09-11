@@ -2,47 +2,42 @@
 
 namespace App\Filament\Resources;
 
-use Filament\Actions;
-
 use App\Events\OrderPaid;
 use App\Filament\Resources\OrderResource\Pages;
 use App\Models\Inbound;
 use App\Models\Order;
-use Filament\Forms\Components\FileUpload;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\ViewField;
-use Filament\Support\Enums\MaxWidth;
-use Filament\Tables\Columns\Layout\Split;
-use Filament\Tables\Columns\Layout\Stack;
-use Filament\Tables\Columns\TextColumn;
-use Illuminate\Support\Str;
 use App\Models\Setting;
 use App\Models\Transaction;
-use App\Models\Notification as UserNotification;
 use App\Services\MarzbanService;
-use Morilog\Jalali\Jalalian;
-use Nette\Utils\FileInfo;
-use SimpleSoftwareIO\QrCode\Facades\QrCode;
 use App\Services\XUIServiceFactory;
+use Filament\Actions;
+use Filament\Actions\Action;
 use Filament\Forms;
-use Filament\Schemas\Schema;
+use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
+use Filament\Schemas\Schema;
 use Filament\Tables;
-use Filament\Actions\Action;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\ImageColumn;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Morilog\Jalali\Jalalian;
 
 class OrderResource extends Resource
 {
     protected static ?string $model = Order::class;
+
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-shopping-cart';
+
     protected static ?string $navigationLabel = 'سفارشات';
+
     protected static ?string $modelLabel = 'سفارش';
+
     protected static ?string $pluralModelLabel = 'سفارشات';
+
     protected static string|\UnitEnum|null $navigationGroup = 'مدیریت مالی';
 
     public static function form(Schema $schema): Schema
@@ -51,7 +46,7 @@ class OrderResource extends Resource
             ->schema([
                 Forms\Components\Select::make('user_id')->inlineLabel()->relationship('user', 'name')->label('کاربر')->disabled(),
                 TextInput::make('plan_name') // نام فیلد دلخواه برای نمایش
-                ->label('عنوان')
+                    ->label('عنوان')
                     ->disabled()
                     ->inlineLabel()
                     ->afterStateHydrated(function ($component, $state, $record) {
@@ -65,12 +60,12 @@ class OrderResource extends Resource
                             $component->state($record->plan?->name ?? '');
                         }
                     }),
-                Forms\Components\TextInput::make('final_price')
+                TextInput::make('final_price')
                     ->label('منبع')
                     ->disabled()
                     ->inlineLabel(),
 
-                Forms\Components\TextInput::make('created_at')
+                TextInput::make('created_at')
                     ->label('تاریخ سفارش')
                     ->disabled()
                     ->inlineLabel()
@@ -83,7 +78,7 @@ class OrderResource extends Resource
                         }
                     }),
 
-                Forms\Components\TextInput::make('expires_at')
+                TextInput::make('expires_at')
                     ->label('تاریخ انقضاء')
                     ->disabled()
                     ->inlineLabel()
@@ -99,8 +94,6 @@ class OrderResource extends Resource
                 Forms\Components\Select::make('status')->inlineLabel()->label('وضعیت سفارش')->options(['pending' => 'در انتظار پرداخت', 'paid' => 'پرداخت شده', 'expired' => 'منقضی شده'])->required(),
                 Forms\Components\Textarea::make('config_details')->inlineLabel()->label('اطلاعات کانفیگ سرویس')->rows(10),
 
-
-
             ]);
 
     }
@@ -109,47 +102,54 @@ class OrderResource extends Resource
     {
         return $table
             ->columns([
-                IconColumn::make('source')->label('منبع')->toggleable()->icon(fn (?string $state): string => match ($state) { 'web' => 'heroicon-o-globe-alt', default => 'heroicon-o-question-mark-circle' })->color(fn (?string $state): string => match ($state) { 'web' => 'primary', default => 'gray' }),
+                IconColumn::make('source')->label('منبع')->toggleable()->icon(fn (?string $state): string => match ($state) {
+                    'web' => 'heroicon-o-globe-alt', default => 'heroicon-o-question-mark-circle'
+                })->color(fn (?string $state): string => match ($state) {
+                    'web' => 'primary', default => 'gray'
+                }),
 
                 ImageColumn::make('card_payment_receipt')->label('رسید')->disk('public')->toggleable()->size(60)->url(fn (Order $record): ?string => $record->card_payment_receipt ? Storage::disk('public')->url($record->card_payment_receipt) : null)->openUrlInNewTab(),
-                Tables\Columns\TextColumn::make('user.name')->label('کاربر')->searchable()->sortable(),
-                Tables\Columns\TextColumn::make('plan.name')->label('عنوان')->default(fn (Order $record): string => $record->plan_id ? $record->plan->name : "شارژ کیف پول")->description(function (Order $record): string {
-                    if ($record->renews_order_id) return " (تمدید سفارش #" . $record->renews_order_id . ")";
+                TextColumn::make('user.name')->label('کاربر')->searchable()->sortable(),
+                TextColumn::make('plan.name')->label('عنوان')->default(fn (Order $record): string => $record->plan_id ? $record->plan->name : 'شارژ کیف پول')->description(function (Order $record): string {
+                    if ($record->renews_order_id) {
+                        return ' (تمدید سفارش #'.$record->renews_order_id.')';
+                    }
+
                     return '';
-                })->color(fn(Order $record) => $record->renews_order_id ? 'primary' : 'gray'),
-                Tables\Columns\TextColumn::make('final_price')
+                })->color(fn (Order $record) => $record->renews_order_id ? 'primary' : 'gray'),
+                TextColumn::make('final_price')
                     ->label('مبلغ')
                     ->getStateUsing(function (Order $record) {
 
                         // ✳ 1) اگر شارژ کیف پول است → مبلغ در orders.amount
                         if (is_null($record->plan_id)) {
-                            return number_format($record->amount) . ' تومان';
+                            return number_format($record->amount).' تومان';
                         }
 
                         // ✳ 2) اگر سفارش pending است و مبلغ در orders نیست → از قیمت پلن نمایش بده
                         if ($record->status === 'pending') {
                             return $record->plan
-                                ? number_format($record->plan->price) . ' تومان'
+                                ? number_format($record->plan->price).' تومان'
                                 : '—';
                         }
 
-                        $transaction = \App\Models\Transaction::where('order_id', $record->id)->first();
+                        $transaction = Transaction::where('order_id', $record->id)->first();
 
                         return $transaction
-                            ? number_format($transaction->amount) . ' تومان'
-                            : ($record->plan ? number_format($record->plan->price) . ' تومان' : '—');
+                            ? number_format($transaction->amount).' تومان'
+                            : ($record->plan ? number_format($record->plan->price).' تومان' : '—');
                     })
                     ->sortable()
                     ->searchable(),
 
-                Tables\Columns\TextColumn::make('payment_method')
+                TextColumn::make('payment_method')
                     ->label('روش پرداخت')
                     ->badge()
                     ->formatStateUsing(fn ($state) => match ($state) {
                         'wallet' => 'کیف پول',
-                        'card'   => 'کارت',
+                        'card' => 'کارت',
                         'crypto' => 'ارز دیجیتال',
-                        default  => 'نامشخص',
+                        default => 'نامشخص',
                     })
                     ->color(fn (string $state): string => match ($state) {
                         'wallet' => 'success',
@@ -157,14 +157,18 @@ class OrderResource extends Resource
                         'crypto' => 'info',
                         default => 'gray'
                     }),
-                Tables\Columns\TextColumn::make('created_at')->label('تاریخ سفارش')->toggleable()->dateTime('Y-m-d')->sortable()->formatStateUsing(function ($state) {
+                TextColumn::make('created_at')->label('تاریخ سفارش')->toggleable()->dateTime('Y-m-d')->sortable()->formatStateUsing(function ($state) {
                     return Jalalian::fromDateTime($state)->format('Y/m/d');
                 }),
-//                Tables\Columns\TextColumn::make('expires_at')->label('تاریخ انقضا')->toggleable()->dateTime('Y-m-d')->sortable()->formatStateUsing(function ($state) {
-//                    return Jalalian::fromDateTime($state)->format('Y/m/d');
-//
-//                }),
-                Tables\Columns\TextColumn::make('status')->label('وضعیت')->badge()->color(fn (string $state): string => match ($state) { 'pending' => 'warning', 'paid' => 'success', 'failed' => 'danger', default => 'gray' })->formatStateUsing(fn (string $state): string => match ($state) { 'pending' => 'در انتظار پرداخت', 'paid' => 'پرداخت شده', 'expired' => 'منقضی شده','failed' => 'خطا ', default => $state }),
+                //                Tables\Columns\TextColumn::make('expires_at')->label('تاریخ انقضا')->toggleable()->dateTime('Y-m-d')->sortable()->formatStateUsing(function ($state) {
+                //                    return Jalalian::fromDateTime($state)->format('Y/m/d');
+                //
+                //                }),
+                TextColumn::make('status')->label('وضعیت')->badge()->color(fn (string $state): string => match ($state) {
+                    'pending' => 'warning', 'paid' => 'success', 'failed' => 'danger', default => 'gray'
+                })->formatStateUsing(fn (string $state): string => match ($state) {
+                    'pending' => 'در انتظار پرداخت', 'paid' => 'پرداخت شده', 'expired' => 'منقضی شده','failed' => 'خطا ', default => $state
+                }),
 
             ])
 
@@ -182,33 +186,34 @@ class OrderResource extends Resource
                             $user = $order->user;
                             $plan = $order->plan;
 
-                            if (!$plan) {
+                            if (! $plan) {
                                 $order->update(['status' => 'paid']);
                                 $user->increment('balance', $order->amount);
-                                Transaction::create(['user_id' => $user->id, 'order_id' => $order->id, 'amount' => $order->amount, 'type' => 'deposit', 'status' => 'completed', 'description' => "شارژ کیف پول (تایید دستی فیش)"]);
+                                Transaction::create(['user_id' => $user->id, 'order_id' => $order->id, 'amount' => $order->amount, 'type' => 'deposit', 'status' => 'completed', 'description' => 'شارژ کیف پول (تایید دستی فیش)']);
                                 $user->notifications()->create([
                                     'type' => 'wallet_charged_approved',
                                     'title' => 'کیف پول شما شارژ شد!',
-                                    'message' => "مبلغ " . number_format($order->amount) . " تومان با موفقیت به کیف پول شما اضافه شد.",
+                                    'message' => 'مبلغ '.number_format($order->amount).' تومان با موفقیت به کیف پول شما اضافه شد.',
                                     'link' => route('dashboard', ['tab' => 'order_history']),
                                 ]);
 
-
                                 Notification::make()->title('کیف پول کاربر با موفقیت شارژ شد.')->success()->send();
+
                                 return;
                             }
 
                             $panelType = $settings->get('panel_type');
                             $success = false;
                             $finalConfig = '';
-                            $isRenewal = (bool)$order->renews_order_id;
+                            $isRenewal = (bool) $order->renews_order_id;
 
                             $originalOrder = $isRenewal ? Order::find($order->renews_order_id) : null;
-                            if ($isRenewal && !$originalOrder) {
+                            if ($isRenewal && ! $originalOrder) {
                                 Notification::make()->title('خطا')->body('سفارش اصلی جهت تمدید یافت نشد.')->danger()->send();
+
                                 return;
                             }
-                            $uniqueUsername = "user-{$user->id}-order-" . ($isRenewal ? $originalOrder->id : $order->id);
+                            $uniqueUsername = "user-{$user->id}-order-".($isRenewal ? $originalOrder->id : $order->id);
                             $newExpiresAt = $isRenewal
                                 ? (new \DateTime($originalOrder->expires_at))->modify("+{$plan->duration_days} days")
                                 : now()->addDays($plan->duration_days);
@@ -223,11 +228,13 @@ class OrderResource extends Resource
                                     $success = true;
                                 } else {
                                     Notification::make()->title('خطا در ارتباط با مرزبان')->body($response['detail'] ?? 'پاسخ نامعتبر.')->danger()->send();
+
                                     return;
                                 }
                             } elseif (in_array($panelType, ['sanaei', 'txui', 'xui'], true)) {
                                 if ($isRenewal) {
                                     Notification::make()->title('خطا')->body('تمدید خودکار برای پنل سنایی هنوز پیاده‌سازی نشده است.')->danger()->send();
+
                                     return;
                                 }
                                 $xuiService = XUIServiceFactory::make(
@@ -236,19 +243,19 @@ class OrderResource extends Resource
                                     (string) $settings->get('xui_user'),
                                     (string) $settings->get('xui_pass')
                                 );
-                                $defaultInboundId = $settings->get('xui_default_inbound_id');
-                                $inbound = Inbound::where('inbound_data->id', $defaultInboundId)->first();
+                                $planInboundId = $plan->inbound_id;
+                                $inbound = Inbound::where('inbound_data->id', $planInboundId)->first();
 
+                                if (! $inbound || ! $inbound->inbound_data) {
+                                    Notification::make()->title('خطا')->body('Inbound انتخاب‌شده برای این پکیج یافت نشد.')->danger()->send();
 
-                                if (!$inbound || !$inbound->inbound_data) {
-                                    Notification::make()->title('خطا')->body('اطلاعات اینباند پیش‌فرض برای X-UI یافت نشد.')->danger()->send();
                                     return;
                                 }
-                                if (!$xuiService->login()) {
+                                if (! $xuiService->login()) {
                                     Notification::make()->title('خطا')->body('خطا در لاگین به پنل X-UI.')->danger()->send();
+
                                     return;
                                 }
-
 
                                 $inboundData = is_string($inbound->inbound_data)
                                     ? json_decode($inbound->inbound_data, true)
@@ -262,24 +269,25 @@ class OrderResource extends Resource
                                         $subId = $response['generated_subId'];
                                         $subBaseUrl = rtrim($settings->get('xui_subscription_url_base'), '/');
                                         if ($subBaseUrl && $subId) {
-                                            $finalConfig = $subBaseUrl . '/sub/' . $subId;
+                                            $finalConfig = $subBaseUrl.'/sub/'.$subId;
                                             $success = true;
                                         }
                                     } else {
                                         $uuid = $response['generated_uuid'];
                                         $streamSettings = json_decode($inboundData['streamSettings'], true);
                                         $parsedUrl = parse_url($settings->get('xui_host'));
-                                        $serverIpOrDomain = !empty($inboundData['listen']) ? $inboundData['listen'] : $parsedUrl['host'];
+                                        $serverIpOrDomain = ! empty($inboundData['listen']) ? $inboundData['listen'] : $parsedUrl['host'];
                                         $port = $inboundData['port'];
                                         $remark = $inboundData['remark'];
                                         $paramsArray = ['type' => $streamSettings['network'] ?? null, 'security' => $streamSettings['security'] ?? null, 'path' => $streamSettings['wsSettings']['path'] ?? ($streamSettings['grpcSettings']['serviceName'] ?? null), 'sni' => $streamSettings['tlsSettings']['serverName'] ?? null, 'host' => $streamSettings['wsSettings']['headers']['Host'] ?? null];
                                         $params = http_build_query(array_filter($paramsArray));
-                                        $fullRemark = $uniqueUsername . '|' . $remark;
-                                        $finalConfig = "vless://{$uuid}@{$serverIpOrDomain}:{$port}?{$params}#" . urlencode($fullRemark);
+                                        $fullRemark = $uniqueUsername.'|'.$remark;
+                                        $finalConfig = "vless://{$uuid}@{$serverIpOrDomain}:{$port}?{$params}#".urlencode($fullRemark);
                                         $success = true;
                                     }
                                 } else {
                                     Notification::make()->title('خطا در ساخت کاربر در پنل سنایی')->body($response['msg'] ?? 'پاسخ نامعتبر')->danger()->send();
+
                                     return;
                                 }
                             } else {
@@ -288,23 +296,22 @@ class OrderResource extends Resource
                                 $user->notifications()->create([
                                     'type' => 'panel_type_error_admin',
                                     'title' => 'خطا در فعال‌سازی سرویس!',
-                                    'message' => "نوع پنل در تنظیمات سیستم به درستی مشخص نشده است. لطفاً به پشتیبانی اطلاع دهید.",
+                                    'message' => 'نوع پنل در تنظیمات سیستم به درستی مشخص نشده است. لطفاً به پشتیبانی اطلاع دهید.',
                                     'link' => route('dashboard', ['tab' => 'support']),
                                 ]);
+
                                 return;
                             }
 
                             if ($success) {
-                                if($isRenewal) {
+                                if ($isRenewal) {
                                     $originalOrder->update([
                                         'config_details' => $finalConfig,
                                         'expires_at' => $newExpiresAt->format('Y-m-d H:i:s'),
-                                        'panel_username' => $uniqueUsername
+                                        'panel_username' => $uniqueUsername,
                                     ]);
 
-
                                     $user->update(['show_renewal_notification' => true]);
-
 
                                     $user->notifications()->create([
                                         'type' => 'service_renewed_admin',
@@ -317,7 +324,7 @@ class OrderResource extends Resource
                                     $order->update([
                                         'config_details' => $finalConfig,
                                         'expires_at' => $newExpiresAt,
-                                        'panel_username' => $uniqueUsername
+                                        'panel_username' => $uniqueUsername,
                                     ]);
                                     $user->notifications()->create([
                                         'type' => 'service_activated_admin',
@@ -326,11 +333,10 @@ class OrderResource extends Resource
                                         'link' => route('dashboard', ['tab' => 'my_services']),
                                     ]);
 
-
                                 }
 
                                 $order->update(['status' => 'paid']);
-                                $description = ($isRenewal ? "تمدید سرویس" : "خرید سرویس") . " {$plan->name}";
+                                $description = ($isRenewal ? 'تمدید سرویس' : 'خرید سرویس')." {$plan->name}";
                                 Transaction::create(['user_id' => $user->id, 'order_id' => $order->id, 'amount' => $plan->price, 'type' => 'purchase', 'status' => 'completed', 'description' => $description]);
                                 OrderPaid::dispatch($order);
                                 Notification::make()->title('عملیات با موفقیت انجام شد.')->success()->send();
@@ -340,26 +346,21 @@ class OrderResource extends Resource
                 Actions\EditAction::make()->button()->label('')->tooltip('ویرایش'),
                 Actions\DeleteAction::make()->button()->label('')->tooltip('حذف'),
 
-
-
-
-
-
-
-
-
-
             ])
             ->bulkActions([Actions\BulkActionGroup::make([Actions\DeleteBulkAction::make()])]);
     }
 
-    public static function getRelations(): array { return []; }
-    public static function getPages(): array { return ['index' => Pages\ListOrders::route('/'),
-        'create' => Pages\CreateOrder::route('/create'),
+    public static function getRelations(): array
+    {
+        return [];
+    }
 
+    public static function getPages(): array
+    {
+        return ['index' => Pages\ListOrders::route('/'),
+            'create' => Pages\CreateOrder::route('/create'),
 
-
-    ];
+        ];
 
     }
 }

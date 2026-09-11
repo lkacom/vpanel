@@ -2,17 +2,15 @@
 
 namespace App\Filament\Resources;
 
-use Filament\Actions;
-
 use App\Filament\Resources\PlanResource\Pages;
+use App\Models\Inbound;
 use App\Models\Plan;
+use Filament\Actions;
 use Filament\Forms;
-use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
+use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class PlanResource extends Resource
 {
@@ -23,7 +21,9 @@ class PlanResource extends Resource
     protected static string|\UnitEnum|null $navigationGroup = 'تنظیمات';
 
     protected static ?string $navigationLabel = ' پکیج های فروش';
+
     protected static ?string $pluralModelLabel = ' پکیج ها';
+
     protected static ?string $modelLabel = 'پکیج جدید';
 
     public static function form(Schema $schema): Schema
@@ -45,7 +45,6 @@ class PlanResource extends Resource
                     ->inlineLabel()
                     ->helperText('هر ویژگی را در یک خط جدید بنویسید.'),
 
-
                 Forms\Components\TextInput::make('volume_gb')
                     ->label('حجم (GB)')
                     ->numeric()
@@ -64,8 +63,21 @@ class PlanResource extends Resource
                     ->required()
                     ->inlineLabel()
                     ->default(30)
-                    ->native(false) ,
-        //========================================================
+                    ->native(false),
+                Forms\Components\Select::make('inbound_id')
+                    ->label('Inbound پکیج')
+                    ->options(fn (): array => Inbound::query()
+                        ->whereNotNull('inbound_data')
+                        ->get()
+                        ->filter(fn (Inbound $inbound): bool => $inbound->is_active && $inbound->panel_id !== null)
+                        ->mapWithKeys(fn (Inbound $inbound): array => [$inbound->panel_id => $inbound->dropdown_label])
+                        ->all())
+                    ->searchable()
+                    ->preload()
+                    ->native(false)
+                    ->required()
+                    ->helperText('سرویس‌های این پکیج در این Inbound ساخته می‌شوند.'),
+                // ========================================================
 
                 Forms\Components\Toggle::make('is_popular')
                     ->label('پلن محبوب است؟')
@@ -75,7 +87,6 @@ class PlanResource extends Resource
                     ->label('فعال')
                     ->inlineLabel()
                     ->default(true),
-
 
             ]);
     }
@@ -87,9 +98,8 @@ class PlanResource extends Resource
                 Tables\Columns\TextColumn::make('name')->label('نام پکیج'),
                 Tables\Columns\TextColumn::make('price')
                     ->label('قیمت کل')
-                    ->formatStateUsing(fn ($record) =>
-                        number_format($record->price) . ' تومان' .
-                        ($record->duration_days > 30 ? ' (' . number_format($record->monthly_price) . ' تومان/ماه)' : '')
+                    ->formatStateUsing(fn ($record) => number_format($record->price).' تومان'.
+                        ($record->duration_days > 30 ? ' ('.number_format($record->monthly_price).' تومان/ماه)' : '')
                     ),
                 Tables\Columns\BooleanColumn::make('is_popular')->label('محبوب'),
                 Tables\Columns\BooleanColumn::make('is_active')->label('فعال'),
@@ -98,15 +108,20 @@ class PlanResource extends Resource
                     ->formatStateUsing(fn ($state, $record) => $record->duration_label)
                     ->sortable(),
 
+                Tables\Columns\TextColumn::make('inbound_id')
+                    ->label('Inbound')
+                    ->formatStateUsing(fn ($state, Plan $record): string => $record->inbound_id
+                        ? (Inbound::query()->where('inbound_data->id', $record->inbound_id)->value('title')
+                            ?? "ID: {$record->inbound_id}")
+                        : 'انتخاب نشده')
+                    ->searchable(),
+
                 Tables\Columns\TextColumn::make('monthly_price')
                     ->label('قیمت ')
-                    ->formatStateUsing(fn ($record) => number_format($record->monthly_price) . ' تومان')
+                    ->formatStateUsing(fn ($record) => number_format($record->monthly_price).' تومان')
                     ->sortable(),
 
-
-
             ])
-
 
             ->filters([
                 //

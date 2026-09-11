@@ -7,7 +7,6 @@ use App\Models\Setting;
 use App\Services\MarzbanService;
 use App\Services\XUIServiceFactory;
 use Filament\Forms\Components\Radio;
-use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
@@ -25,13 +24,17 @@ class VpnSettings extends Page implements HasForms
     use InteractsWithForms;
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-key';
+
     protected string $view = 'filament.pages.vpn-settings';
+
     protected static ?string $navigationLabel = 'افزودن سرور v2ray';
+
     protected static ?string $title = 'افزودن سرور جدید';
+
     protected static string|\UnitEnum|null $navigationGroup = 'تنظیمات';
 
     public ?array $connectionData = [];
-    public ?array $inboundData = [];
+
     /** @deprecated Kept for compatibility with older Livewire callers. */
     public ?array $data = [];
 
@@ -63,9 +66,6 @@ class VpnSettings extends Page implements HasForms
         ];
 
         $this->connectionForm->fill(array_merge($connectionDefaults, $settings));
-        $this->inboundForm->fill([
-            'xui_default_inbound_id' => $settings['xui_default_inbound_id'] ?? null,
-        ]);
     }
 
     public function connectionForm(Schema $schema): Schema
@@ -105,25 +105,6 @@ class VpnSettings extends Page implements HasForms
             ->statePath('connectionData');
     }
 
-    public function inboundForm(Schema $schema): Schema
-    {
-        return $schema
-            ->schema([
-                Section::make('کانفیگ پیش‌فرض')
-                    ->schema([
-                        Select::make('xui_default_inbound_id')
-                            ->label('Inbound پیش‌فرض')
-                            ->options(fn (): array => $this->inboundOptions())
-                            ->native(false)
-                            ->preload()
-                            ->allowHtml()
-                            ->placeholder('یک اینباند انتخاب کنید')
-                            ->helperText('کانفیگ کاربران توسط inbound پیش فرض ساخته خواهد شد.'),
-                    ]),
-            ])
-            ->statePath('inboundData');
-    }
-
     /** @return array<string, string> */
     private function xuiConnectionSchema(array $panelTypes): array
     {
@@ -140,28 +121,6 @@ class VpnSettings extends Page implements HasForms
                 ->required($required),
             TextInput::make('xui_subscription_url_base')->label('آدرس پایه لینک سابسکریپشن'),
         ];
-    }
-
-    /** @return array<string, string> */
-    private function inboundOptions(): array
-    {
-        $options = [];
-
-        foreach (Inbound::query()->whereNotNull('inbound_data')->get() as $inbound) {
-            $data = $inbound->inbound_data;
-            if (! is_array($data) || ! isset($data['id']) || ($data['enable'] ?? false) !== true) {
-                continue;
-            }
-
-            $label = $inbound->dropdown_label;
-            $options[(string) $data['id']] = is_string($label)
-                ? $label
-                : strip_tags((string) json_encode($label));
-        }
-
-        ksort($options);
-
-        return $options;
     }
 
     public function saveConnection(): void
@@ -186,6 +145,7 @@ class VpnSettings extends Page implements HasForms
 
                 if (! $xui->login()) {
                     $this->notifyError('خطا در اتصال', 'نام کاربری یا رمز عبور اشتباه است یا سرور در دسترس نیست.');
+
                     return;
                 }
 
@@ -197,22 +157,8 @@ class VpnSettings extends Page implements HasForms
 
                 if (empty($inbounds)) {
                     $this->notifyError('خطا در دریافت اینباندها', 'سرور در دسترس نیست یا اینباندی موجود نیست.');
-                    return;
-                }
 
-                $inboundIds = array_map(
-                    static fn (array $inbound): string => (string) $inbound['id'],
-                    $inbounds,
-                );
-                $currentDefaultInbound = Setting::where('key', 'xui_default_inbound_id')->value('value');
-                if ($currentDefaultInbound !== null
-                    && $currentDefaultInbound !== ''
-                    && ! in_array((string) $currentDefaultInbound, $inboundIds, true)) {
-                    Setting::updateOrCreate(
-                        ['key' => 'xui_default_inbound_id'],
-                        ['value' => ''],
-                    );
-                    $this->inboundForm->fill(['xui_default_inbound_id' => null]);
+                    return;
                 }
 
                 DB::transaction(function () use ($formData, $inbounds): void {
@@ -227,7 +173,8 @@ class VpnSettings extends Page implements HasForms
                 });
 
                 Cache::forget('inbounds_dropdown');
-                $this->notifySuccess('همگام‌سازی موفق', count($inbounds) . ' اینباند با موفقیت Sync شد.');
+                $this->notifySuccess('همگام‌سازی موفق', count($inbounds).' اینباند با موفقیت Sync شد.');
+
                 return;
             }
 
@@ -241,6 +188,7 @@ class VpnSettings extends Page implements HasForms
 
                 if (! $marzban->login()) {
                     $this->notifyError('خطا در اتصال به مرزبان', 'نام کاربری یا رمز عبور مرزبان صحیح نیست یا آدرس پنل در دسترس نمی‌باشد.');
+
                     return;
                 }
 
@@ -248,28 +196,8 @@ class VpnSettings extends Page implements HasForms
                 $this->notifySuccess('تنظیمات اتصال ذخیره شد');
             }
         } catch (\Throwable $e) {
-            Log::error('Panel connection configuration failed: ' . $e->getMessage());
+            Log::error('Panel connection configuration failed: '.$e->getMessage());
             $this->notifyError('خطا در تنظیمات', $e->getMessage());
-        }
-    }
-
-    public function saveInbound(): void
-    {
-        try {
-            $this->inboundForm->validate();
-            $inboundId = $this->inboundForm->getState()['xui_default_inbound_id'] ?? null;
-
-            Setting::updateOrCreate([
-                'key' => 'xui_default_inbound_id',
-            ], [
-                'value' => $inboundId ?? '',
-            ]);
-
-            Cache::forget('settings');
-            $this->notifySuccess('Inbound پیش‌فرض ذخیره شد');
-        } catch (\Throwable $e) {
-            Log::error('Default inbound configuration failed: ' . $e->getMessage());
-            $this->notifyError('خطا در ذخیره Inbound', $e->getMessage());
         }
     }
 
@@ -282,11 +210,11 @@ class VpnSettings extends Page implements HasForms
         if ($initialSave) {
             $this->connectionForm->fill($this->data ?? []);
             $this->saveConnection();
+
             return;
         }
 
-        $this->inboundForm->fill($this->data ?? []);
-        $this->saveInbound();
+        $this->saveConnection();
     }
 
     /** @param array<string, mixed> $settings */
