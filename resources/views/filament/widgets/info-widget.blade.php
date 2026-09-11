@@ -19,8 +19,10 @@
                 </p>
             </div>
 
-            <div class="text-sm text-black-500 dark:text-gray-400">
-مدیریت فروش،گزارشات مالی و پشتیبانی کاربران            </div>
+            <div class="text-sm text-center text-black-500 dark:text-gray-400">
+                <div>نسخه فعلی: v1.0.0</div>
+
+            </div>
             <!-- کادر آخر -->
             <div class="flex flex-col items-start gap-y-1">
 

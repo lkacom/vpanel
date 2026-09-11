@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\PlanResource\Pages;
 use App\Models\Inbound;
 use App\Models\Plan;
+use App\Models\Setting;
 use Filament\Actions;
 use Filament\Forms;
 use Filament\Resources\Resource;
@@ -26,69 +27,125 @@ class PlanResource extends Resource
 
     protected static ?string $modelLabel = 'پکیج جدید';
 
+    /**
+     * لیست Inbound های فعال از دیتابیس
+     *
+     * @return array<string, string>
+     */
+    private static function inboundOptions(): array
+    {
+        return Inbound::query()
+            ->whereNotNull('inbound_data')
+            ->get()
+            ->filter(fn (Inbound $inbound): bool => $inbound->is_active && $inbound->panel_id !== null)
+            ->mapWithKeys(fn (Inbound $inbound): array => [
+                $inbound->panel_id => $inbound->dropdown_label,
+            ])
+            ->all();
+    }
+
+    /**
+     * نوع پنل فعلی
+     */
+    private static function panelType(): string
+    {
+        return (string) Setting::where('key', 'panel_type')->value('value');
+    }
+
     public static function form(Schema $schema): Schema
     {
-        return $schema
-            ->schema([
-                Forms\Components\TextInput::make('name')
-                    ->label('نام سرویس')
-                    ->inlineLabel()
-                    ->required(),
-                Forms\Components\TextInput::make('price')
-                    ->label('قیمت')
-                    ->numeric()
-                    ->inlineLabel()
-                    ->required(),
-                Forms\Components\Textarea::make('features')
-                    ->label('ویژگی‌ها')
-                    ->required()
-                    ->inlineLabel()
-                    ->helperText('هر ویژگی را در یک خط جدید بنویسید.'),
+        $panelType = static::panelType();
+        $isSanaei  = $panelType === 'sanaei';
+        $options   = static::inboundOptions();
 
-                Forms\Components\TextInput::make('volume_gb')
-                    ->label('حجم (GB)')
-                    ->numeric()
-                    ->required()
-                    ->inlineLabel()
-                    ->default(30)
-                    ->helperText('حجم سرویس را به گیگابایت وارد کنید.'),
+        return $schema->schema([
+            Forms\Components\TextInput::make('name')
+                ->label('نام سرویس')
+                ->inlineLabel()
+                ->required(),
 
-                Forms\Components\Select::make('duration_days')
-                    ->label('مدت اعتبار')
-                    ->options([
-                        30 => '۳۰ روز (۱ ماهه)',
-                        90 => '۹۰ روز (۳ ماهه)',
-                        365 => '۳۶۵ روز (۱ ساله)',
-                    ])
-                    ->required()
-                    ->inlineLabel()
-                    ->default(30)
-                    ->native(false),
-                Forms\Components\Select::make('inbound_id')
-                    ->label('Inbound پکیج')
-                    ->options(fn (): array => Inbound::query()
-                        ->whereNotNull('inbound_data')
-                        ->get()
-                        ->filter(fn (Inbound $inbound): bool => $inbound->is_active && $inbound->panel_id !== null)
-                        ->mapWithKeys(fn (Inbound $inbound): array => [$inbound->panel_id => $inbound->dropdown_label])
-                        ->all())
+            Forms\Components\TextInput::make('price')
+                ->label('قیمت')
+                ->numeric()
+                ->inlineLabel()
+                ->required(),
+
+            Forms\Components\Textarea::make('features')
+                ->label('ویژگی‌ها')
+                ->required()
+                ->inlineLabel()
+                ->helperText('هر ویژگی را در یک خط جدید بنویسید.'),
+
+            Forms\Components\TextInput::make('volume_gb')
+                ->label('حجم (GB)')
+                ->numeric()
+                ->required()
+                ->inlineLabel()
+                ->default(30)
+                ->helperText('حجم سرویس را به گیگابایت وارد کنید.'),
+
+            Forms\Components\Select::make('duration_days')
+                ->label('مدت اعتبار')
+                ->options([
+                    30  => '۳۰ روز (۱ ماهه)',
+                    90  => '۹۰ روز (۳ ماهه)',
+                    365 => '۳۶۵ روز (۱ ساله)',
+                ])
+                ->required()
+                ->inlineLabel()
+                ->default(30)
+                ->native(false),
+
+            // ── پنل ثنایی v3+: می‌توان چند Inbound به یک کلاینت Attach کرد ──
+            // کلاینت از هر کدام که بخواهد استفاده می‌کند (Attached Inbounds)
+            $isSanaei
+                ? Forms\Components\Select::make('inbound_ids')
+                    ->label('Inbound های پکیج')
+                    ->options($options)
+                    ->multiple()           // چند Inbound قابل انتخاب
                     ->searchable()
                     ->preload()
                     ->native(false)
                     ->required()
-                    ->helperText('سرویس‌های این پکیج در این Inbound ساخته می‌شوند.'),
-                // ========================================================
+                    ->helperText('پنل ثنایی v3+: کلاینت به همه Inbound های انتخاب‌شده متصل می‌شود و از هر کدام می‌تواند استفاده کند.')
+                : Forms\Components\Select::make('inbound_ids')
+                    ->label('Inbound پکیج')
+                    ->options($options)
+                    ->multiple(false)      // پنل علیرضا/مرزبان: فقط یک Inbound
+                    ->searchable()
+                    ->preload()
+                    ->native(false)
+                    ->required()
+                    ->helperText(
+                        $panelType === 'txui'
+                            ? 'پنل علیرضا: یک Inbound انتخاب کنید.'
+                            : 'یک Inbound انتخاب کنید.'
+                    )
+                    // برای select تکی، مقدار را به آرایه تبدیل کن
+                    ->afterStateHydrated(function (Forms\Components\Select $component, $state) {
+                        // اگر مقدار ذخیره‌شده آرایه است، اولین عنصر را برگردان
+                        if (is_array($state) && count($state) === 1) {
+                            $component->state($state[0]);
+                        }
+                    })
+                    ->dehydrateStateUsing(function ($state): array {
+                        // ذخیره به عنوان آرایه یک‌عنصری
+                        if (is_array($state)) {
+                            return $state;
+                        }
+                        return $state !== null && $state !== '' ? [(string) $state] : [];
+                    }),
 
-                Forms\Components\Toggle::make('is_popular')
-                    ->label('پلن محبوب است؟')
-                    ->inlineLabel()
-                    ->helperText('این پلن به صورت ویژه نمایش داده خواهد شد.'),
-                Forms\Components\Toggle::make('is_active')
-                    ->label('فعال')
-                    ->inlineLabel()
-                    ->default(true),
+            Forms\Components\Toggle::make('is_popular')
+                ->label('پلن محبوب است؟')
+                ->inlineLabel()
+                ->helperText('این پلن به صورت ویژه نمایش داده خواهد شد.'),
 
-            ]);
+            Forms\Components\Toggle::make('is_active')
+                ->label('فعال')
+                ->inlineLabel()
+                ->default(true),
+        ]);
     }
 
     public static function table(Table $table): Table
@@ -96,36 +153,45 @@ class PlanResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('name')->label('نام پکیج'),
+
                 Tables\Columns\TextColumn::make('price')
-                    ->label('قیمت کل')
-                    ->formatStateUsing(fn ($record) => number_format($record->price).' تومان'.
-                        ($record->duration_days > 30 ? ' ('.number_format($record->monthly_price).' تومان/ماه)' : '')
+                    ->label('قیمت ')
+                    ->sortable()
+                    ->formatStateUsing(fn ($record) => number_format($record->price) . ' تومان' .
+                        ($record->duration_days > 30 ? ' (' . number_format($record->monthly_price) . ' تومان/ماه)' : '')
                     ),
+
                 Tables\Columns\BooleanColumn::make('is_popular')->label('محبوب'),
                 Tables\Columns\BooleanColumn::make('is_active')->label('فعال'),
+
                 Tables\Columns\TextColumn::make('duration_days')
                     ->label('مدت اعتبار')
                     ->formatStateUsing(fn ($state, $record) => $record->duration_label)
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('inbound_id')
-                    ->label('Inbound')
-                    ->formatStateUsing(fn ($state, Plan $record): string => $record->inbound_id
-                        ? (Inbound::query()->where('inbound_data->id', $record->inbound_id)->value('title')
-                            ?? "ID: {$record->inbound_id}")
-                        : 'انتخاب نشده')
-                    ->searchable(),
+//                Tables\Columns\TextColumn::make('inbound_ids')
+//                    ->label('Inbound')
+//                    ->formatStateUsing(function ($state, Plan $record): string {
+//                        $ids = $record->effective_inbound_ids;
+//                        if (empty($ids)) {
+//                            return 'انتخاب نشده';
+//                        }
+//                        $labels = [];
+//                        foreach ($ids as $id) {
+//                            $title = Inbound::query()
+//                                ->where('inbound_data->id', $id)
+//                                ->value('title');
+//                            $labels[] = $title ?? "ID: {$id}";
+//                        }
+//                        return implode(' | ', $labels);
+//                    }),
 
-                Tables\Columns\TextColumn::make('monthly_price')
-                    ->label('قیمت ')
-                    ->formatStateUsing(fn ($record) => number_format($record->monthly_price).' تومان')
+                Tables\Columns\TextColumn::make('duration_days')
+                    ->label('اعتبار')
+                    ->suffix(' روز')
                     ->sortable(),
-
             ])
-
-            ->filters([
-                //
-            ])
+            ->filters([])
             ->actions([
                 Actions\EditAction::make()->button()->label(''),
                 Actions\DeleteAction::make()->button()->label(''),
@@ -139,15 +205,13 @@ class PlanResource extends Resource
 
     public static function getRelations(): array
     {
-        return [
-            //
-        ];
+        return [];
     }
 
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListPlans::route('/'),
+            'index'  => Pages\ListPlans::route('/'),
             'create' => Pages\CreatePlan::route('/create'),
         ];
     }
