@@ -22,27 +22,13 @@ class StatsOverview extends BaseWidget
 
 
         $totalRevenue = Order::where('status', 'paid')
-            ->whereNotNull('plan_id')
-            ->with('plan')
-            ->get()
-            ->sum(function($order) {
-
-                return $order->plan?->price ?? 0;
-            });
-
+            ->sum('amount');
 
         $currentMonthRevenue = Order::where('status', 'paid')
-            ->whereNotNull('plan_id')
-            ->whereMonth('created_at', now()->month)
-            ->whereYear('created_at', now()->year)
-            ->with('plan')
-            ->get()
-            ->sum(function($order) {
-                return $order->plan?->price ?? 0;
-            });
+            ->where('created_at', '>=', now()->subDays(30))
+            ->sum('amount');
 
-        $totalPaidOrders = Order::where('status', 'paid')->count();
-
+        $totalPaidOrders = Order::where('status', 'paid')->whereNull('payment_method')->count();
 
         $totalUsers = Order::where('status', 'pending')->count();
 
@@ -76,7 +62,7 @@ class StatsOverview extends BaseWidget
                 ->color('warning'),
 
             Stat::make('سفارشات موفق', $totalPaidOrders)
-                ->description('مجموع سفارشات تحویلی')
+                ->description(' کانفیگ های تحویلی')
                 ->descriptionIcon('heroicon-m-shield-check',IconPosition::Before)
                 ->color(Color::Purple),
         ];
