@@ -109,8 +109,7 @@ class VpnSettings extends Page implements HasForms
     {
         return $schema
             ->schema([
-                Section::make('Inbound پیش‌فرض')
-                    ->description('تغییر این مقدار فقط تنظیمات Inbound را ذخیره می‌کند و اطلاعات پنل دوباره اعتبارسنجی نمی‌شود.')
+                Section::make('کانفیگ پیش‌فرض')
                     ->schema([
                         Select::make('xui_default_inbound_id')
                             ->label('Inbound پیش‌فرض')
@@ -119,7 +118,7 @@ class VpnSettings extends Page implements HasForms
                             ->preload()
                             ->allowHtml()
                             ->placeholder('یک اینباند انتخاب کنید')
-                            ->helperText('فقط مقدار xui_default_inbound_id تغییر خواهد کرد.'),
+                            ->helperText('کانفیگ کاربران توسط inbound پیش فرض ساخته خواهد شد.'),
                     ]),
             ])
             ->statePath('inboundData');
