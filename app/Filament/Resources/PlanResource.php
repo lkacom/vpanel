@@ -155,11 +155,10 @@ class PlanResource extends Resource
                 Tables\Columns\TextColumn::make('name')->label('نام پکیج'),
 
                 Tables\Columns\TextColumn::make('price')
-                    ->label('قیمت ')
+                    ->label('قیمت')
                     ->sortable()
-                    ->formatStateUsing(fn ($record) => number_format($record->price) . ' تومان' .
-                        ($record->duration_days > 30 ? ' (' . number_format($record->monthly_price) . ' تومان/ماه)' : '')
-                    ),
+                    ->formatStateUsing(fn ($state) => number_format($state))
+                    ->suffix(' تومان'),
 
                 Tables\Columns\BooleanColumn::make('is_popular')->label('محبوب'),
                 Tables\Columns\BooleanColumn::make('is_active')->label('فعال'),
