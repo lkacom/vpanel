@@ -8,7 +8,7 @@ use Morilog\Jalali\Jalalian;
 
 class OrdersChart extends ChartWidget
 {
-    protected ?string $heading = 'سفارشات فعال شده 30 روز اخیر';
+    protected ?string $heading = ' خلاصه وضعیت فروش 30 روز اخیر';
     protected int|string|array $columnSpan = 12;
     protected static ?int $sort = 2;
     protected function getData(): array
@@ -35,7 +35,19 @@ class OrdersChart extends ChartWidget
             'labels' => $labels,
         ];
     }
-
+    protected function getOptions(): array
+    {
+        return [
+            'scales' => [
+                'y' => [
+                    'beginAtZero' => true,
+                    'ticks' => [
+                        'stepSize' => 1,
+                    ],
+                ],
+            ],
+        ];
+    }
     protected function getType(): string
     {
         return 'bar';
