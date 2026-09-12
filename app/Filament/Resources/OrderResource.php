@@ -333,7 +333,7 @@ class OrderResource extends Resource
                         });
                     }),
 
-                Actions\EditAction::make()->button()->label('')->tooltip('ویرایش'),
+                Actions\EditAction::make()->button()->label('')->tooltip('ویرایش')->visible(fn (Order $record): bool => is_null($record->plan_id)),
                 Actions\DeleteAction::make()->button()->label('')->tooltip('حذف'),
             ])
             ->bulkActions([Actions\BulkActionGroup::make([Actions\DeleteBulkAction::make()])]);

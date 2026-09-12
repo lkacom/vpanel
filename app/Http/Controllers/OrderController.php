@@ -231,10 +231,17 @@ class OrderController extends Controller
         } catch (\Exception $e) {
             Log::error('Wallet Payment Failed: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
 
-            Auth::user()->notifications()->create([
+            // DB::transaction rollback خودکار انجام می‌دهد — موجودی برگشت داده می‌شود
+            // فقط وضعیت سفارش را به failed تغییر می‌دهیم تا در لیست ادمین نمایش داده نشود
+            try {
+                $order->update(['status' => 'failed', 'payment_method' => 'wallet']);
+            } catch (\Throwable) {
+            }
+
+            $user->notifications()->create([
                 'type'    => 'payment_failed',
-                'title'   => 'خطا در پرداخت با کیف پول!',
-                'message' => 'پرداخت سفارش شما با خطا مواجه شد: ' . $e->getMessage(),
+                'title'   => 'خطا در پرداخت!',
+                'message' => 'پرداخت سفارش با خطا مواجه شد: ' . $e->getMessage() . ' — موجودی کیف پول شما تغییر نکرده است.',
                 'link'    => route('dashboard', ['tab' => 'order_history']),
             ]);
 
