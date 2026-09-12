@@ -48,7 +48,7 @@ class StatsOverview extends BaseWidget
                 ->color('warning'),
 
             Stat::make('سفارشات موفق', $totalPaidOrders)
-                ->description('کانفیگ‌های تحویل‌داده‌شده')
+                ->description('سفارشات تحویل‌داده‌شده')
                 ->descriptionIcon('heroicon-m-shield-check')
                 ->color(Color::Purple),
         ];
