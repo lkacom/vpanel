@@ -145,7 +145,41 @@ class OrderController extends Controller
         }
 
         try {
-            DB::transaction(function () use ($order, $user, $plan, $price) {
+            $settings  = Setting::all()->pluck('value', 'key');
+            $panelType = $settings->get('panel_type');
+            $isRenewal = (bool) $order->renews_order_id;
+
+            $uniqueUsername = $isRenewal
+                ? "user-{$user->id}-order-" . $order->renews_order_id
+                : "user-{$user->id}-order-" . $order->id;
+
+            // محاسبه تاریخ انقضا
+            $baseDate = now();
+            if ($isRenewal && $order->renews_order_id) {
+                $originalOrder = Order::find($order->renews_order_id);
+                if ($originalOrder && $originalOrder->expires_at) {
+                    $baseDate = new \DateTime($originalOrder->expires_at);
+                }
+            }
+            $newExpiresAt = (clone $baseDate)->modify("+{$plan->duration_days} days");
+            $timestamp    = $newExpiresAt->getTimestamp();
+
+            // ابتدا کلاینت را در پنل بساز (قبل از کسر موجودی)
+            [$success, $finalConfig] = match ($panelType) {
+                'marzban' => $this->handleMarzban($settings, $plan, $isRenewal, $uniqueUsername, $timestamp),
+                'sanaei', 'txui', 'xui' => $this->handleXUI(
+                    $panelType, $settings, $plan, $order, $isRenewal,
+                    $uniqueUsername, $timestamp, $newExpiresAt
+                ),
+                default => throw new \Exception('نوع پنل در تنظیمات مشخص نشده است.'),
+            };
+
+            if (! $success) {
+                throw new \Exception('خطا در ساخت اکانت.');
+            }
+
+            // ── کلاینت با موفقیت ساخته شد — حالا موجودی را کسر کن ──
+            DB::transaction(function () use ($order, $user, $plan, $price, $finalConfig, $newExpiresAt, $isRenewal) {
                 $user->decrement('balance', $price);
 
                 $user->notifications()->create([
@@ -154,38 +188,6 @@ class OrderController extends Controller
                     'message' => 'مبلغ ' . number_format($price) . " تومان برای سفارش #{$order->id} از کیف پول شما کسر شد.",
                     'link'    => route('dashboard', ['tab' => 'order_history']),
                 ]);
-
-                $settings  = Setting::all()->pluck('value', 'key');
-                $panelType = $settings->get('panel_type');
-                $isRenewal = (bool) $order->renews_order_id;
-
-                $uniqueUsername = $isRenewal
-                    ? "user-{$user->id}-order-" . $order->renews_order_id
-                    : "user-{$user->id}-order-" . $order->id;
-
-                // محاسبه تاریخ انقضا
-                $baseDate = now();
-                if ($isRenewal && $order->renews_order_id) {
-                    $originalOrder = Order::find($order->renews_order_id);
-                    if ($originalOrder && $originalOrder->expires_at) {
-                        $baseDate = new \DateTime($originalOrder->expires_at);
-                    }
-                }
-                $newExpiresAt = (clone $baseDate)->modify("+{$plan->duration_days} days");
-                $timestamp    = $newExpiresAt->getTimestamp();
-
-                [$success, $finalConfig] = match ($panelType) {
-                    'marzban' => $this->handleMarzban($settings, $plan, $isRenewal, $uniqueUsername, $timestamp),
-                    'sanaei', 'txui', 'xui' => $this->handleXUI(
-                        $panelType, $settings, $plan, $order, $isRenewal,
-                        $uniqueUsername, $timestamp, $newExpiresAt
-                    ),
-                    default => throw new \Exception('نوع پنل در تنظیمات مشخص نشده است.'),
-                };
-
-                if (! $success) {
-                    throw new \Exception('خطا در ارتباط با سرور برای فعال‌سازی سرویس.');
-                }
 
                 // آپدیت سفارش
                 if ($isRenewal) {
@@ -198,7 +200,7 @@ class OrderController extends Controller
                     $user->notifications()->create([
                         'type'    => 'service_renewed',
                         'title'   => 'سرویس شما تمدید شد!',
-                        'message' => "سرویس {$originalOrder->plan->name} با موفقیت تمدید شد.",
+                        'message' => "سرویس {$plan->name} با موفقیت تمدید شد.",
                         'link'    => route('dashboard', ['tab' => 'my_services']),
                     ]);
                 } else {
@@ -231,8 +233,6 @@ class OrderController extends Controller
         } catch (\Exception $e) {
             Log::error('Wallet Payment Failed: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
 
-            // DB::transaction rollback خودکار انجام می‌دهد — موجودی برگشت داده می‌شود
-            // فقط وضعیت سفارش را به failed تغییر می‌دهیم تا در لیست ادمین نمایش داده نشود
             try {
                 $order->update(['status' => 'failed', 'payment_method' => 'wallet']);
             } catch (\Throwable) {
@@ -240,12 +240,12 @@ class OrderController extends Controller
 
             $user->notifications()->create([
                 'type'    => 'payment_failed',
-                'title'   => 'خطا در پرداخت!',
-                'message' => 'پرداخت سفارش با خطا مواجه شد: ' . $e->getMessage() . ' — موجودی کیف پول شما تغییر نکرده است.',
+                'title'   => 'خطا در فعال‌سازی سرویس!',
+                'message' => 'خطا در ساخت اکانت. موجودی کیف پول شما تغییر نکرده است.',
                 'link'    => route('dashboard', ['tab' => 'order_history']),
             ]);
 
-            return redirect()->route('dashboard')->with('error', 'پرداخت با خطا مواجه شد: ' . $e->getMessage());
+            return redirect()->route('dashboard')->with('error', 'خطا در ساخت اکانت. لطفاً دوباره تلاش کنید.');
         }
 
         return redirect()->route('dashboard')->with('status', 'سرویس شما با موفقیت فعال شد.');
@@ -313,7 +313,7 @@ class OrderController extends Controller
         $inboundIds = $plan->effective_inbound_ids;
 
         if (empty($inboundIds)) {
-            throw new \Exception('برای این پکیج Inbound انتخاب نشده است. لطفاً پکیج را ویرایش کنید.');
+            throw new \Exception('برای این پکیج سروری تعریف نشده است.');
         }
 
         // اولین inbound را برای دریافت اطلاعات اتصال (port, remark, streamSettings) استفاده می‌کنیم
@@ -322,7 +322,7 @@ class OrderController extends Controller
         $primaryData      = $primaryInbound->inbound_data;
 
         if (! $xuiService->login()) {
-            throw new \Exception('خطا در لاگین به پنل X-UI. اطلاعات اتصال را بررسی کنید.');
+            throw new \Exception('خطا در اتصال به پنل.');
         }
 
         $clientData = [
@@ -367,7 +367,7 @@ class OrderController extends Controller
         ]));
 
         if (! ($response['success'] ?? false)) {
-            throw new \Exception('خطا در ساخت کاربر در پنل: ' . ($response['msg'] ?? 'پاسخ نامعتبر'));
+            throw new \Exception('خطا در ساخت اکانت در پنل.');
         }
 
         $linkType = $settings->get('xui_link_type', 'single');
@@ -376,7 +376,7 @@ class OrderController extends Controller
             $subId      = $response['generated_subId'];
             $subBaseUrl = rtrim($settings->get('xui_subscription_url_base', ''), '/');
             if (! $subBaseUrl || ! $subId) {
-                throw new \Exception('آدرس پایه سابسکریپشن یا subId معتبر نیست.');
+                throw new \Exception('تنظیمات سابسکریپشن ناقص است.');
             }
             return [true, $subBaseUrl . '/sub/' . $subId];
         }
@@ -432,7 +432,7 @@ class OrderController extends Controller
                 Log::warning('Client not found for renewal (subscription), creating new.', compact('uniqueUsername', 'subId'));
                 $addResp = $xuiService->addClient($primaryId, $clientData);
                 if (! ($addResp['success'] ?? false)) {
-                    throw new \Exception('خطا در ساخت کلاینت جدید: ' . ($addResp['msg'] ?? ''));
+                    throw new \Exception('خطا در تمدید سرویس.');
                 }
                 $subBaseUrl = rtrim($settings->get('xui_subscription_url_base', ''), '/');
                 $newSubId   = $addResp['generated_subId'];
@@ -442,7 +442,7 @@ class OrderController extends Controller
             $clientData['id'] = $clientId;
             $resp             = $xuiService->updateClient($primaryId, $clientId, $clientData);
             if (! ($resp['success'] ?? false)) {
-                throw new \Exception('خطا در بروزرسانی کلاینت: ' . ($resp['msg'] ?? ''));
+                throw new \Exception('خطا در تمدید سرویس.');
             }
 
             return [true, $originalConfig];
@@ -452,7 +452,7 @@ class OrderController extends Controller
         preg_match('/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/i', $originalConfig, $matches);
         $clientId = $matches[1] ?? null;
         if (! $clientId) {
-            throw new \Exception('UUID کلاینت در کانفیگ قبلی یافت نشد.');
+            throw new \Exception('اطلاعات سرویس قبلی نامعتبر است.');
         }
 
         $clientData['id'] = $clientId;
@@ -464,7 +464,7 @@ class OrderController extends Controller
             Log::warning('Client not found for renewal (single), creating new.', compact('uniqueUsername', 'clientId'));
             $addResp = $xuiService->addClient($primaryId, $clientData);
             if (! ($addResp['success'] ?? false)) {
-                throw new \Exception('خطا در ساخت کلاینت جدید: ' . ($addResp['msg'] ?? ''));
+                throw new \Exception('خطا در تمدید سرویس.');
             }
             $config = $this->buildVlessLink($clientId, $primaryData, $settings->get('xui_host', ''), $uniqueUsername);
             return [true, $config];
@@ -472,7 +472,7 @@ class OrderController extends Controller
 
         $resp = $xuiService->updateClient($primaryId, $clientId, $clientData);
         if (! ($resp['success'] ?? false)) {
-            throw new \Exception('خطا در بروزرسانی کلاینت: ' . ($resp['msg'] ?? ''));
+            throw new \Exception('خطا در تمدید سرویس.');
         }
 
         return [true, $originalConfig];

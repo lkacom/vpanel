@@ -5,34 +5,47 @@ namespace App\Services;
 use Illuminate\Support\Facades\Log;
 
 /**
- * سرویس پنل ثنایی 3x-ui
+ * سرویس پنل ثنایی 3x-ui (نسخه‌های v3.0+ مبتنی بر React)
  *
- * مستندات: https://github.com/iamhelitha/3xui-api-client/wiki/Modern-API
- * مستندات رسمی: https://docs.sanaei.dev/docs/reference/api/authentication/
+ * مستندات: https://docs.sanaei.dev/docs/reference/api/authentication/
+ * OpenAPI: https://host:port{basePath}/panel/api/openapi.json
  *
- * ساختار URL:
- *   host:port / {webPath} / panel / api / {endpoint}
+ * ساختار URL پنل‌های v3.7+:
  *
- * مثال با webPath=/panel:
- *   Login:    https://host:2083/panel/panel/api/login
- *   CSRF:     https://host:2083/panel/panel/api/csrf-token
- *   Inbounds: https://host:2083/panel/panel/api/inbounds/list
- *   Add:      https://host:2083/panel/panel/api/clients/add  (v3+)
- *             https://host:2083/panel/panel/api/inbounds/addClient  (legacy)
+ *   basePath = /panel (یا هر مسیر دلخواه دیگر)
  *
- * اما اگر webPath خالی باشد:
- *   Login: https://host:2083/login
+ *   {baseUrl}{basePath}/csrf-token          → CSRF token (سطح بالا)
+ *   {baseUrl}{basePath}/login               → Login (سطح بالا)
+ *   {baseUrl}{basePath}/panel/api/...       → API endpoints (زیر SPA)
+ *   {baseUrl}{basePath}/ws                  → WebSocket
  *
- * AbstractXUIService::url($path) → baseUrl + basePath + '/' + $path
- * بنابراین همه path‌ها باید بدون /panel/ شروع کنند.
+ * مثال‌ها:
+ *   CSRF:      https://host:2083/panel/csrf-token
+ *   Login:     https://host:2083/panel/login
+ *   API:       https://host:2083/panel/panel/api/clients/add
+ *   Inbounds:  https://host:2083/panel/panel/api/inbounds/list/slim
+ *
+ * AbstractXUIService::url($path) = baseUrl + basePath + '/' + $path
+ * apiUrl($path) = url('panel/api/' + $path) = host + /panel + /panel/api/ + $path
+ *
+ * Legacy (v2.x):
+ *   {baseUrl}/login                        → Login
+ *   {baseUrl}/csrf-token                   → CSRF
+ *   {baseUrl}/xui/inbound/addClient        → AddClient
  */
 class SanaeiXUIService extends AbstractXUIService
 {
     /**
-     * آیا پنل v3+ (React-based با /panel/api/) است یا legacy (Vue-based با /login).
+     * آیا پنل v3+ (React-based با /panel/panel/api/) است یا legacy (Vue-based با /xui/).
      * null = هنوز تشخیص داده نشده
      */
     private ?bool $isModernPanel = null;
+
+    /**
+     * CSRF token برای احراز هویت درخواست‌های API
+     * از endpoint /csrf-token دریافت شده و در همه درخواست‌ها ارسال می‌شود
+     */
+    private ?string $csrfToken = null;
 
     public function login(): bool
     {
@@ -40,9 +53,14 @@ class SanaeiXUIService extends AbstractXUIService
             return true;
         }
 
+        Log::debug(static::class . ' login attempt.', [
+            'host'     => $this->baseUrl,
+            'basePath' => $this->basePath,
+        ]);
+
         // مرحله ۱: تشخیص نسخه پنل از طریق CSRF endpoint
-        // v3+ modern: csrf-token در /panel/api/csrf-token
-        // legacy:     csrf-token در /csrf-token (یا اصلاً وجود ندارد)
+        // v3+ modern: csrf-token در {basePath}/csrf-token (سطح بالا)
+        // legacy:     csrf-token در {baseUrl}/csrf-token
         $csrfResult   = $this->tryModernLogin();
         if ($csrfResult === true) {
             return true;
@@ -54,16 +72,22 @@ class SanaeiXUIService extends AbstractXUIService
 
     /**
      * login پنل v3+ مدرن:
-     * 1. GET /panel/api/csrf-token → session cookie + csrf token
-     * 2. POST /panel/api/login با JSON + X-CSRF-Token
+     * 1. GET /panel/csrf-token → session cookie + csrf token
+     * 2. POST /panel/login با form-encoded + X-CSRF-Token
+     *
+     * توجه: CSRF و Login در سطح بالای /panel/ هستند (نه /panel/api/)
      */
     private function tryModernLogin(): bool
     {
         try {
-            // CSRF endpoint در v3+ زیر /panel/api/ است
-            $csrfResponse = $this->client()->get($this->apiUrl('/csrf-token'));
+            // CSRF endpoint در سطح بالای basePath: /panel/csrf-token
+            $csrfUrl = $this->url('/csrf-token');
+            Log::debug(static::class . ' trying modern login.', ['url' => $csrfUrl]);
+
+            $csrfResponse = $this->client()->get($csrfUrl);
 
             if (! $csrfResponse->successful()) {
+                Log::debug(static::class . ' modern CSRF failed.', ['status' => $csrfResponse->status()]);
                 return false;
             }
 
@@ -78,11 +102,15 @@ class SanaeiXUIService extends AbstractXUIService
                 }
             }
 
-            // POST /panel/api/login با همان cookieJar (session cookie از CSRF request)
+            // ذخیره CSRF token برای استفاده در درخواست‌های بعدی
+            $this->csrfToken = $csrfToken;
+            Log::debug(static::class . ' CSRF token saved.', ['token_length' => strlen($csrfToken)]);
+
+            // POST /panel/login با form-encoded (پنل v3.7+ form را می‌پذیرد)
             $loginResponse = $this->client()
                 ->withHeader('X-CSRF-Token', $csrfToken)
-                ->asJson()
-                ->post($this->apiUrl('/login'), [
+                ->asForm()
+                ->post($this->url('/login'), [
                     'username' => $this->username,
                     'password' => $this->password,
                 ]);
@@ -94,7 +122,23 @@ class SanaeiXUIService extends AbstractXUIService
                 return true;
             }
 
-            $this->logHttpFailure('modern login', $loginResponse, ['url' => $this->apiUrl('/login')]);
+            // Fallback: try JSON body
+            $loginResponse = $this->client()
+                ->withHeader('X-CSRF-Token', $csrfToken)
+                ->asJson()
+                ->post($this->url('/login'), [
+                    'username' => $this->username,
+                    'password' => $this->password,
+                ]);
+
+            if ($this->isSuccessfulResponse($loginResponse)) {
+                $this->isLoggedIn    = true;
+                $this->isModernPanel = true;
+                Log::debug(static::class . ' logged in via modern API (v3+) JSON.');
+                return true;
+            }
+
+            $this->logHttpFailure('modern login', $loginResponse, ['url' => $this->url('/login')]);
         } catch (\Throwable $e) {
             Log::debug(static::class . ' modern login failed.', ['message' => $e->getMessage()]);
         }
@@ -109,6 +153,9 @@ class SanaeiXUIService extends AbstractXUIService
     private function tryLegacyLogin(): bool
     {
         $credentials = ['username' => $this->username, 'password' => $this->password];
+        $loginUrl = $this->url('/login');
+
+        Log::debug(static::class . ' trying legacy login.', ['url' => $loginUrl]);
 
         try {
             // ابتدا CSRF از مسیر قدیمی
@@ -154,18 +201,39 @@ class SanaeiXUIService extends AbstractXUIService
     }
 
     /**
-     * URL برای endpoint‌های زیر /panel/api/ (v3+ و legacy هر دو)
+     * URL برای endpoint‌های API پنل v3+ (React-based)
+     *
+     * ساختار URL پنل‌های v3.7+:
+     *   /panel/csrf-token          → CSRF token (سطح بالا)
+     *   /panel/login               → Login (سطح بالا)
+     *   /panel/panel/api/...       → API endpoints (زیر SPA)
+     *   /panel/ws                  → WebSocket
+     *
+     * بنابراین apiUrl باید basePath را دوبار اضافه کند:
+     *   apiUrl('/clients/add') → host/panel/panel/api/clients/add
+     *
      * AbstractXUIService::url($path) = baseUrl + basePath + '/' + ltrim($path, '/')
-     *
-     * مثال basePath=/panel:
-     *   apiUrl('/login') → host/panel/panel/api/login  ✓
-     *
-     * مثال basePath='' (webPath خالی):
-     *   apiUrl('/login') → host/panel/api/login        ✓
+     * url('panel/api/clients/add') = host + /panel + /panel/api/clients/add
      */
     private function apiUrl(string $path): string
     {
         return $this->url('panel/api/' . ltrim($path, '/'));
+    }
+
+    /**
+     * ایجاد درخواست HTTP با CSRF token
+     * این متد CSRF token ذخیره شده را به header اضافه می‌کند
+     */
+    private function apiRequest(): \Illuminate\Http\Client\PendingRequest
+    {
+        $request = $this->client()->acceptJson();
+        if ($this->csrfToken) {
+            $request = $request->withHeader('X-CSRF-Token', $this->csrfToken);
+            Log::debug(static::class . ' API request with CSRF token.', ['token_length' => strlen($this->csrfToken)]);
+        } else {
+            Log::debug(static::class . ' API request WITHOUT CSRF token!');
+        }
+        return $request;
     }
 
     /** @return array<int, array<string, mixed>> */
@@ -176,7 +244,7 @@ class SanaeiXUIService extends AbstractXUIService
         }
 
         try {
-            $response = $this->client()->get($this->apiUrl('/inbounds/list'));
+            $response = $this->apiRequest()->get($this->apiUrl('/inbounds/list'));
 
             if (! $this->isSuccessfulResponse($response)) {
                 $this->logHttpFailure('get inbounds', $response, ['url' => $this->apiUrl('/inbounds/list')]);
@@ -199,7 +267,7 @@ class SanaeiXUIService extends AbstractXUIService
         }
 
         try {
-            $response = $this->client()->get($this->apiUrl("/inbounds/get/{$inboundId}"));
+            $response = $this->apiRequest()->get($this->apiUrl("/inbounds/get/{$inboundId}"));
             return $this->clientsFromInboundResponse($response, $inboundId);
         } catch (\Throwable $e) {
             Log::warning(static::class . ' could not retrieve inbound clients.', [
@@ -213,8 +281,8 @@ class SanaeiXUIService extends AbstractXUIService
     /**
      * افزودن کلاینت
      *
-     * v3+:    POST /panel/api/clients/add  با {client: {...}, inboundIds: [...]}
-     * legacy: POST /panel/api/inbounds/addClient  با {id: N, settings: JSON}
+     * v3+:    POST /panel/panel/api/clients/add  با {client: {...}, inboundIds: [...]}
+     * legacy: POST /panel/panel/api/inbounds/addClient  با {id: N, settings: JSON}
      *
      * _all_inbound_ids اگر در clientData بود، همه را به v3+ می‌فرستیم (Attached Inbounds)
      *
@@ -235,10 +303,13 @@ class SanaeiXUIService extends AbstractXUIService
 
         $payload = $this->newClientPayload($clientData);
 
-        if ($this->isModernPanel === true) {
-            return $this->addClientModern($inboundId, $payload, $allInboundIds);
+        // ابتدا endpoint مدرن v3+ را امتحان کن
+        $result = $this->addClientModern($inboundId, $payload, $allInboundIds);
+        if ($result['success'] ?? false) {
+            return $result;
         }
 
+        // اگر modern fail شد، legacy endpoint را امتحان کن
         return $this->addClientLegacy($inboundId, $payload);
     }
 
@@ -252,17 +323,28 @@ class SanaeiXUIService extends AbstractXUIService
         $inboundIds = $allInboundIds ?? [$inboundId];
 
         try {
-            $response = $this->client()
-                ->asJson()
-                ->post($this->apiUrl('/clients/add'), [
-                    'client'     => $payload['client'],
-                    'inboundIds' => $inboundIds,
-                ]);
+            $url = $this->apiUrl('/clients/add');
+            Log::debug(static::class . ' modern addClient request.', [
+                'url'        => $url,
+                'inbound_id' => $inboundId,
+                'inbound_ids'=> $inboundIds,
+                'has_csrf'   => $this->csrfToken !== null,
+            ]);
+
+            $response = $this->apiRequest()->asJson()->post($url, [
+                'client'     => $payload['client'],
+                'inboundIds' => $inboundIds,
+            ]);
+
+            Log::debug(static::class . ' modern addClient response.', [
+                'status' => $response->status(),
+                'body'   => substr($response->body(), 0, 500),
+            ]);
 
             if (! $this->isSuccessfulResponse($response)) {
                 Log::info(static::class . ' modern addClient failed, trying legacy.', [
                     'status' => $response->status(),
-                    'url'    => $this->apiUrl('/clients/add'),
+                    'url'    => $url,
                     'body'   => substr($response->body(), 0, 300),
                 ]);
                 return $this->addClientLegacy($inboundId, $payload);
@@ -286,17 +368,27 @@ class SanaeiXUIService extends AbstractXUIService
     private function addClientLegacy(int $inboundId, array $payload): array
     {
         try {
-            $response = $this->client()
-                ->asJson()
-                ->post($this->apiUrl('/inbounds/addClient'), [
-                    'id'       => $inboundId,
-                    'settings' => json_encode(['clients' => [$payload['client']]], JSON_THROW_ON_ERROR),
-                ]);
+            $url = $this->apiUrl('/inbounds/addClient');
+            Log::debug(static::class . ' legacy addClient request.', [
+                'url'        => $url,
+                'inbound_id' => $inboundId,
+                'has_csrf'   => $this->csrfToken !== null,
+            ]);
+
+            $response = $this->apiRequest()->asJson()->post($url, [
+                'id'       => $inboundId,
+                'settings' => json_encode(['clients' => [$payload['client']]], JSON_THROW_ON_ERROR),
+            ]);
+
+            Log::debug(static::class . ' legacy addClient response.', [
+                'status' => $response->status(),
+                'body'   => substr($response->body(), 0, 500),
+            ]);
 
             if (! $this->isSuccessfulResponse($response)) {
                 $this->logHttpFailure('add client legacy', $response, [
                     'inbound_id' => $inboundId,
-                    'url'        => $this->apiUrl('/inbounds/addClient'),
+                    'url'        => $url,
                 ]);
                 return $this->responsePayload($response, 'Sanaei panel rejected the client creation request.');
             }
@@ -337,7 +429,7 @@ class SanaeiXUIService extends AbstractXUIService
         $client              = $this->clientFields($clientData, is_array($existingClient) ? $existingClient : []);
 
         try {
-            $response = $this->client()
+            $response = $this->apiRequest()
                 ->asJson()
                 ->post($this->apiUrl('/clients/update/' . rawurlencode($email)), $client);
 
