@@ -27,7 +27,7 @@ class VpnSettings extends Page implements HasForms
 
     protected string $view = 'filament.pages.vpn-settings';
 
-    protected static ?string $navigationLabel = 'پیکربندی سرور v2ray';
+    protected static ?string $navigationLabel = 'تنظیمات سرور v2ray';
 
     protected static ?string $title = 'اتصال سرور v2ray';
 
