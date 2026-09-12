@@ -44,7 +44,6 @@ class ThemeSettings extends Page implements HasForms
             'xui_user' => null,
             'xui_pass' => null,
             'xui_default_inbound_id' => null,
-            'xui_link_type' => 'single',
             'marzban_host' => null,
             'marzban_sudo_username' => null,
             'marzban_sudo_password' => null,

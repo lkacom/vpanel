@@ -121,19 +121,18 @@ trait ManagesServiceProvisioning
                 $response = $xuiService->addClient($inboundData['id'], $clientData);
 
                 if ($response && isset($response['success']) && $response['success']) {
-                    $linkType = $settings->get('xui_link_type', 'single');
-                    if ($linkType === 'subscription') {
+                    // تشخیص خودکار نوع لینک: سابسکریپشن یا تکی
+                    $subBaseUrl = $xuiService->getSubscriptionBaseUrl();
+                    if ($subBaseUrl) {
                         $subId = $response['generated_subId'] ?? null;
-                        $subBaseUrl = rtrim($settings->get('xui_subscription_url_base'), '/');
-                        if ($subBaseUrl && $subId) {
-                            $finalConfig = $subBaseUrl.'/sub/'.$subId;
+                        if ($subId) {
+                            $finalConfig = $subBaseUrl . '/' . $subId;
                             $success = true;
-                        } else {
-                            $this->handleProvisioningError('آدرس پایه اشتراک XUI یا ID اشتراک ست نشده.');
-
-                            return false;
                         }
-                    } else { // single link
+                    }
+
+                    if (! $success) {
+                        // Single link
                         $uuid = $response['generated_uuid'] ?? null;
                         if (! $uuid) {
                             $this->handleProvisioningError('UUID از پنل XUI دریافت نشد.');

@@ -172,4 +172,28 @@ class AlirezaXUIService extends AbstractXUIService
             return ['success' => false, 'msg' => 'Error updating a client in the Alireza panel.'];
         }
     }
+
+    /**
+     * دریافت آدرس پایه سابسکریپشن
+     *
+     * پنل علیرضا سابسکریپشن را در مسیر /sub/{subId} ارائه می‌دهد
+     *
+     * @return string|null آدرس پایه سابسکریپشن یا null اگر در دسترس نباشد
+     */
+    public function getSubscriptionBaseUrl(): ?string
+    {
+        if (! $this->login()) {
+            return null;
+        }
+
+        try {
+            // آدرس پایه سابسکریپشن = آدرس کامل پنل + /sub
+            $baseUrl = $this->baseUrl . $this->basePath . '/sub';
+            Log::debug(static::class . ' subscription base URL.', ['url' => $baseUrl]);
+            return $baseUrl;
+        } catch (\Throwable $e) {
+            Log::debug(static::class . ' could not get subscription settings.', ['message' => $e->getMessage()]);
+            return null;
+        }
+    }
 }

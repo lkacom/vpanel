@@ -370,15 +370,13 @@ class OrderController extends Controller
             throw new \Exception('خطا در ساخت اکانت در پنل.');
         }
 
-        $linkType = $settings->get('xui_link_type', 'single');
-
-        if ($linkType === 'subscription') {
-            $subId      = $response['generated_subId'];
-            $subBaseUrl = rtrim($settings->get('xui_subscription_url_base', ''), '/');
-            if (! $subBaseUrl || ! $subId) {
-                throw new \Exception('تنظیمات سابسکریپشن ناقص است.');
+        // تشخیص خودکار نوع لینک: سابسکریپشن یا تکی
+        $subBaseUrl = $xuiService->getSubscriptionBaseUrl();
+        if ($subBaseUrl) {
+            $subId = $response['generated_subId'];
+            if ($subId) {
+                return [true, $subBaseUrl . '/' . $subId];
             }
-            return [true, $subBaseUrl . '/sub/' . $subId];
         }
 
         // Single link: ساخت لینک VLESS از اطلاعات inbound اول
@@ -411,14 +409,16 @@ class OrderController extends Controller
         }
 
         $originalConfig = $originalOrder->config_details;
-        $linkType       = $settings->get('xui_link_type', 'single');
         $primaryId      = (int) $inboundIds[0];
 
-        if ($linkType === 'subscription') {
+        // تشخیص خودکار نوع لینک از کانفیگ قبلی
+        $isSubscription = str_contains($originalConfig, '/sub/');
+
+        if ($isSubscription) {
             preg_match('/\/sub\/([a-zA-Z0-9]+)/', $originalConfig, $matches);
             $subId = $matches[1] ?? null;
             if (! $subId) {
-                throw new \Exception('شناسه اشتراک (subId) در کانفیگ قبلی یافت نشد.');
+                throw new \Exception('شناسه اشتراک در کانفیگ قبلی یافت نشد.');
             }
 
             $clientData['subId'] = $subId;
@@ -434,9 +434,9 @@ class OrderController extends Controller
                 if (! ($addResp['success'] ?? false)) {
                     throw new \Exception('خطا در تمدید سرویس.');
                 }
-                $subBaseUrl = rtrim($settings->get('xui_subscription_url_base', ''), '/');
+                $subBaseUrl = $xuiService->getSubscriptionBaseUrl();
                 $newSubId   = $addResp['generated_subId'];
-                return [true, $subBaseUrl . '/sub/' . $newSubId];
+                return [true, $subBaseUrl . '/' . $newSubId];
             }
 
             $clientData['id'] = $clientId;

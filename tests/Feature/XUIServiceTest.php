@@ -258,7 +258,6 @@ it('synchronizes inbounds only after either configured XUI panel is authenticate
             ->set('data.xui_host', $panel['host'])
             ->set('data.xui_user', 'admin')
             ->set('data.xui_pass', 'correct-password')
-            ->set('data.xui_link_type', 'single')
             ->call('submit', true)
             ->assertHasNoErrors();
 

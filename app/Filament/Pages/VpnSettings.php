@@ -57,8 +57,6 @@ class VpnSettings extends Page implements HasForms
             'xui_host' => null,
             'xui_user' => null,
             'xui_pass' => null,
-            'xui_link_type' => 'single',
-            'xui_subscription_url_base' => null,
             'marzban_host' => null,
             'marzban_sudo_username' => null,
             'marzban_sudo_password' => null,
@@ -114,12 +112,6 @@ class VpnSettings extends Page implements HasForms
             TextInput::make('xui_host')->label('آدرس کامل پنل')->required($required),
             TextInput::make('xui_user')->label('نام کاربری')->required($required),
             TextInput::make('xui_pass')->label('رمز عبور')->password()->required($required),
-            Radio::make('xui_link_type')
-                ->label('نوع لینک تحویلی')
-                ->options(['single' => 'لینک تکی', 'subscription' => 'لینک سابسکریپشن'])
-                ->default('single')
-                ->required($required),
-            TextInput::make('xui_subscription_url_base')->label('آدرس پایه لینک سابسکریپشن'),
         ];
     }
 

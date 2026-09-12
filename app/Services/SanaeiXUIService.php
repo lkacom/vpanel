@@ -236,6 +236,53 @@ class SanaeiXUIService extends AbstractXUIService
         return $request;
     }
 
+    /**
+     * دریافت آدرس پایه سابسکریپشن از پنل
+     *
+     * پنل‌های سنایی v3+ سابسکریپشن را در مسیر /sub/{subId} ارائه می‌دهند
+     * آدرس پایه = آدرس کامل پنل + /sub
+     *
+     * @return string|null آدرس پایه سابسکریپشن یا null اگر در دسترس نباشد
+     */
+    public function getSubscriptionBaseUrl(): ?string
+    {
+        if (! $this->login()) {
+            return null;
+        }
+
+        try {
+            // تلاش برای دریافت اطلاعات سرور که شامل تنظیمات سابسکریپشن است
+            $response = $this->apiRequest()->get($this->apiUrl('/server/getSettings'));
+
+            if ($this->isSuccessfulResponse($response)) {
+                $settings = $response->json('obj', []);
+
+                // بررسی آیا سابسکریپشن فعال است
+                $subEnabled = $settings['subEnabled'] ?? $settings['sub_enable'] ?? true;
+                if (! $subEnabled) {
+                    Log::debug(static::class . ' subscription is disabled in panel settings.');
+                    return null;
+                }
+
+                // آدرس پایه سابسکریپشن = آدرس کامل پنل + /sub
+                // مثال: https://us.ad24.top:2083/panel/sub
+                $baseUrl = $this->baseUrl . $this->basePath . '/sub';
+                Log::debug(static::class . ' subscription base URL.', ['url' => $baseUrl]);
+                return $baseUrl;
+            }
+
+            // اگر endpoint server/getSettings در دسترس نبود، آدرس پیش‌فرض را برگردان
+            $baseUrl = $this->baseUrl . $this->basePath . '/sub';
+            Log::debug(static::class . ' using default subscription base URL.', ['url' => $baseUrl]);
+            return $baseUrl;
+        } catch (\Throwable $e) {
+            Log::debug(static::class . ' could not get subscription settings.', ['message' => $e->getMessage()]);
+            // آدرس پیش‌فرض سابسکریپشن
+            $baseUrl = $this->baseUrl . $this->basePath . '/sub';
+            return $baseUrl;
+        }
+    }
+
     /** @return array<int, array<string, mixed>> */
     public function getInbounds(): array
     {

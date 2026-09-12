@@ -264,12 +264,18 @@ class OrderResource extends Resource
                                         return;
                                     }
 
-                                    $linkType = $settings->get('xui_link_type', 'single');
-                                    if ($linkType === 'subscription') {
-                                        $subBaseUrl  = rtrim($settings->get('xui_subscription_url_base', ''), '/');
-                                        $finalConfig = $subBaseUrl . '/sub/' . $response['generated_subId'];
-                                        $success     = (bool) $subBaseUrl;
-                                    } else {
+                                    // تشخیص خودکار نوع لینک: سابسکریپشن یا تکی
+                                    $subBaseUrl = $xuiService->getSubscriptionBaseUrl();
+                                    if ($subBaseUrl) {
+                                        $subId = $response['generated_subId'] ?? null;
+                                        if ($subId) {
+                                            $finalConfig = $subBaseUrl . '/' . $subId;
+                                            $success = true;
+                                        }
+                                    }
+
+                                    if (! $success) {
+                                        // Single link
                                         $uuid           = $response['generated_uuid'];
                                         $streamSettings = $inboundData['streamSettings'] ?? [];
                                         if (is_string($streamSettings)) {
@@ -289,7 +295,7 @@ class OrderResource extends Resource
                                         $params      = http_build_query($paramsArray);
                                         $fullRemark  = $uniqueUsername . '|' . $remark;
                                         $finalConfig = "vless://{$uuid}@{$serverIpOrDomain}:{$port}?{$params}#" . urlencode($fullRemark);
-                                        $success     = true;
+                                        $success = true;
                                     }
 
                                 } else {
