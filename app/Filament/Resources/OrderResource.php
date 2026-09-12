@@ -90,7 +90,7 @@ class OrderResource extends Resource
 
                 TextColumn::make('plan.name')
                     ->label('عنوان')
-                    ->default(fn (Order $record): string => $record->plan_id ? $record->plan->name : 'شارژ کیف پول')
+                    ->default(fn (Order $record): string => $record->plan_id ? $record->plan->name : 'افزایش موجودی')
                     ->description(fn (Order $record): string => $record->renews_order_id ? ' (تمدید سفارش #' . $record->renews_order_id . ')' : '')
                     ->color(fn (Order $record) => $record->renews_order_id ? 'primary' : 'gray'),
 

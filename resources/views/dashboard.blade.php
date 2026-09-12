@@ -170,23 +170,64 @@
                                         </div>
                                         <div x-show="open" x-transition x-cloak class="mt-4 pt-4 border-t dark:border-gray-700">
                                             <h4 class="font-bold mb-2 text-gray-900 dark:text-white text-right">اطلاعات سرویس:</h4>
-                                            <div class="p-3 bg-gray-100 dark:bg-gray-900 rounded-lg relative" x-data="{copied: false, copyToClipboard(text) { navigator.clipboard.writeText(text); this.copied = true; setTimeout(() => { this.copied = false }, 2000); }}">
-                                                <pre class="text-left text-sm text-gray-800 dark:text-gray-300 whitespace-pre-wrap overflow-x-auto" dir="ltr" style="padding-top: 2.5rem;">{{ $order->config_details }}</pre>
+                                            @php
+                                                $config = $order->config_details;
+                                                $isSubscription = str_contains($config, '/sub/');
+                                            @endphp
 
-                                                <!-- کانتینر دکمه‌ها در سمت راست -->
-                                                <div class="absolute top-2 right-2 flex gap-2">
-                                                    <!-- دکمه کپی -->
-                                                    <button @click="copyToClipboard(`{{ $order->config_details }}`)" class="px-2 py-1 text-xs bg-gray-300 dark:bg-gray-700 rounded hover:bg-gray-400 transition-colors flex items-center gap-1">
-                                                        <span x-show="!copied">📋 کپی</span>
-                                                        <span x-show="copied" class="text-green-600 font-bold">✓ کپی شد!</span>
-                                                    </button>
-
-                                                    <!-- دکمه نمایش QR Code -->
-                                                    <button @click="$store.qrModal.open('{{ $order->config_details }}', '{{ $order->plan->name }}')" class="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors flex items-center gap-1">
-                                                        📱 QR Code
-                                                    </button>
+                                            @if($isSubscription)
+                                                {{-- نمایش لینک سابسکریپشن --}}
+                                                <div class="p-4 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-700">
+                                                    <div class="flex items-center gap-2 mb-3">
+                                                        <span class="text-blue-600 dark:text-blue-400 text-lg">🔗</span>
+                                                        <span class="font-bold text-blue-800 dark:text-blue-300">لینک سابسکریپشن</span>
+                                                    </div>
+                                                    <p class="text-sm text-blue-700 dark:text-blue-300 mb-3 text-right">
+                                                        این لینک شامل تمام سرورها و کانفیگ‌ها است. با این لینک می‌توانید در تمام برنامه‌ها اتصال پیدا کنید.
+                                                    </p>
+                                                    <div class="p-3 bg-white dark:bg-gray-800 rounded-lg relative" x-data="{copied: false, copyToClipboard(text) { navigator.clipboard.writeText(text); this.copied = true; setTimeout(() => { this.copied = false }, 2000); }}">
+                                                        <pre class="text-left text-sm text-gray-800 dark:text-gray-300 whitespace-pre-wrap overflow-x-auto break-all" dir="ltr">{{ $config }}</pre>
+                                                        <div class="absolute top-2 right-2 flex gap-2">
+                                                            <button @click="copyToClipboard(`{{ $config }}`)" class="px-2 py-1 text-xs bg-gray-300 dark:bg-gray-700 rounded hover:bg-gray-400 transition-colors flex items-center gap-1">
+                                                                <span x-show="!copied">📋 کپی</span>
+                                                                <span x-show="copied" class="text-green-600 font-bold">✓ کپی شد!</span>
+                                                            </button>
+                                                            <button @click="$store.qrModal.open('{{ $config }}', '{{ $order->plan->name }}')" class="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors flex items-center gap-1">
+                                                                📱 QR Code
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                    <div class="mt-3 text-sm text-gray-600 dark:text-gray-400 text-right">
+                                                        <p class="font-bold mb-1">راهنمای اتصال:</p>
+                                                        <ul class="list-disc list-inside space-y-1">
+                                                            <li>در برنامه <strong>V2RayNG</strong> یا <strong>Streisand</strong> یا <strong>Hiddify</strong> گزینه اضافه کردن اشتراک (Subscription) را بزنید</li>
+                                                            <li>لینک بالا را کپی و در قسمت URL اضافه کنید</li>
+                                                            <li>پس از اتصال، لیست سرورها نمایش داده می‌شود</li>
+                                                        </ul>
+                                                    </div>
                                                 </div>
-                                            </div>
+                                            @else
+                                                {{-- نمایش کانفیگ تکی --}}
+                                                <div class="p-3 bg-gray-100 dark:bg-gray-900 rounded-lg relative" x-data="{copied: false, copyToClipboard(text) { navigator.clipboard.writeText(text); this.copied = true; setTimeout(() => { this.copied = false }, 2000); }}">
+                                                    <pre class="text-left text-sm text-gray-800 dark:text-gray-300 whitespace-pre-wrap overflow-x-auto" dir="ltr" style="padding-top: 2.5rem;">{{ $config }}</pre>
+                                                    <div class="absolute top-2 right-2 flex gap-2">
+                                                        <button @click="copyToClipboard(`{{ $config }}`)" class="px-2 py-1 text-xs bg-gray-300 dark:bg-gray-700 rounded hover:bg-gray-400 transition-colors flex items-center gap-1">
+                                                            <span x-show="!copied">📋 کپی</span>
+                                                            <span x-show="copied" class="text-green-600 font-bold">✓ کپی شد!</span>
+                                                        </button>
+                                                        <button @click="$store.qrModal.open('{{ $config }}', '{{ $order->plan->name }}')" class="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors flex items-center gap-1">
+                                                            📱 QR Code
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <div class="mt-3 text-sm text-gray-600 dark:text-gray-400 text-right">
+                                                    <p class="font-bold mb-1">راهنمای اتصال:</p>
+                                                    <ul class="list-disc list-inside space-y-1">
+                                                        <li>در برنامه <strong>V2RayNG</strong> یا <strong>Streisand</strong> یا <strong>Hiddify</strong> گزینه اضافه کردن کانفیگ را بزنید</li>
+                                                        <li>لینک بالا را کپی یا QR Code را اسکن کنید</li>
+                                                    </ul>
+                                                </div>
+                                            @endif
                                         </div>
                                     </div>
                                 @endforeach
