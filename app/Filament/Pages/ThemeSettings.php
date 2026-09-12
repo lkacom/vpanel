@@ -167,6 +167,37 @@ class ThemeSettings extends Page implements HasForms
                             TextInput::make('payment_card_holder_name')->label('نام صاحب حساب'),
                             Textarea::make('payment_card_instructions')->label('توضیحات اضافی')->rows(3),
                         ]),
+
+                        Section::make('درگاه زرین‌پال')
+                            ->description('تنظیمات اتصال به درگاه پرداخت زرین‌پال')
+                            ->schema([
+                                TextInput::make('zarinpal_merchant_id')
+                                    ->label('کد پذیرنده (Merchant ID)')
+                                    ->placeholder('xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx')
+                                    ->helperText('از پنل زرین‌پال → درگاه‌ها → کد پذیرنده دریافت کنید.')
+                                    ->maxLength(36)
+                                    ->columnSpanFull(),
+                                Select::make('zarinpal_currency')
+                                    ->label('واحد پول')
+                                    ->options(['IRT' => 'تومان (IRT)', 'IRR' => 'ریال (IRR)'])
+                                    ->default('IRT'),
+                                TextInput::make('zarinpal_description')
+                                    ->label('توضیحات پیش‌فرض تراکنش')
+                                    ->placeholder('خرید اشتراک')
+                                    ->maxLength(255),
+                                TextInput::make('zarinpal_callback_url')
+                                    ->label('آدرس Callback')
+                                    ->placeholder(url('/payment/zarinpal/callback'))
+                                    ->helperText('این آدرس را در پنل زرین‌پال هم ثبت کنید.')
+                                    ->url()
+                                    ->columnSpanFull(),
+                                \Filament\Forms\Components\Toggle::make('zarinpal_sandbox')
+                                    ->label('حالت آزمایشی (Sandbox)')
+                                    ->helperText('فعال کنید تا پول واقعی کسر نشود — فقط برای تست.')
+                                    ->onColor('warning')
+                                    ->offColor('gray'),
+                            ])
+                            ->columns(2),
                     ]),
 
 

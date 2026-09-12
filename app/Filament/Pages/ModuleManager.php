@@ -65,7 +65,13 @@ class ModuleManager extends Page implements HasForms
             ->schema([
                 FileUpload::make('plugin_zip')
                     ->label('فایل Zip افزونه')
-                    ->acceptedFileTypes(['application/zip'])
+                    ->acceptedFileTypes([
+                        'application/zip',
+                        'application/x-zip',
+                        'application/x-zip-compressed',
+                        'application/octet-stream',
+                        'multipart/x-zip',
+                    ])
                     ->required()
                     ->storeFiles(false),
             ])
