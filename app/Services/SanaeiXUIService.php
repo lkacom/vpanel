@@ -237,21 +237,22 @@ class SanaeiXUIService extends AbstractXUIService
     }
 
     /**
-     * دریافت آدرس پایه سابسکریپشن از پنل
+     * دریافت آدرس کامل سابسکریپشن از پنل
      *
      * پنل‌های سنایی v3+ سابسکریپشن را در مسیر /sub/{subId} ارائه می‌دهند
      * آدرس پایه = آدرس کامل پنل + /sub
      *
-     * @return string|null آدرس پایه سابسکریپشن یا null اگر در دسترس نباشد
+     * @param  int|null  $inboundId  شناسه inbound برای دریافت پورت و مسیر
+     * @return array{url: string, port: int, path: string}|null آدرس کامل سابسکریپشن یا null اگر در دسترس نباشد
      */
-    public function getSubscriptionBaseUrl(): ?string
+    public function getSubscriptionUrl(?int $inboundId = null): ?array
     {
         if (! $this->login()) {
             return null;
         }
 
         try {
-            // تلاش برای دریافت اطلاعات سرور که شامل تنظیمات سابسکریپشن است
+            // دریافت تنظیمات سرور برای بررسی فعال بودن سابسکریپشن
             $response = $this->apiRequest()->get($this->apiUrl('/server/getSettings'));
 
             if ($this->isSuccessfulResponse($response)) {
@@ -263,23 +264,53 @@ class SanaeiXUIService extends AbstractXUIService
                     Log::debug(static::class . ' subscription is disabled in panel settings.');
                     return null;
                 }
-
-                // آدرس پایه سابسکریپشن = آدرس کامل پنل + /sub
-                // مثال: https://us.ad24.top:2083/panel/sub
-                $baseUrl = $this->baseUrl . $this->basePath . '/sub';
-                Log::debug(static::class . ' subscription base URL.', ['url' => $baseUrl]);
-                return $baseUrl;
             }
 
-            // اگر endpoint server/getSettings در دسترس نبود، آدرس پیش‌فرض را برگردان
-            $baseUrl = $this->baseUrl . $this->basePath . '/sub';
-            Log::debug(static::class . ' using default subscription base URL.', ['url' => $baseUrl]);
-            return $baseUrl;
+// ابتدا از تنظیمات ذخیره شده درpanel تلاش کن
+            $savedPort = Setting::get('xui_subscription_port', '443');
+            $savedPath = Setting::get('xui_subscription_path', '');
+
+            if (! empty($savedPort)) {
+                $port = (int) $savedPort;
+            } else {
+                // در غیر صورت از تنظیمات پنل API تلاش کن
+                $response = $this->apiRequest()->get($this->apiUrl('/server/getSettings'));
+
+                if ($this->isSuccessfulResponse($response)) {
+                    $settings = $response->json('obj', []);
+
+                    // بررسی آیا سابسcriber فعال است
+                    $subEnabled = $settings['subEnabled'] ?? $settings['sub_enable'] ?? true;
+                    if (! $subEnabled) {
+                        Log::debug(static::class . ' subscription is disabled in panel settings.');
+                        return null;
+                    }
+                    $port = (int) ($settings['subPort'] ?? $settings['sub_port'] ?? 443);
+                    $path = $settings['subPath'] ?? $settings['sub_path'] ?? '/sub';
+                } else {
+                    $port = 443;
+                    $path = '/sub';
+                }
+            }
+
+            // اگر path ذخیره شده باشد، از آن استفاده کن
+            if (! empty($savedPath)) {
+                $path = $savedPath;
+            }
+
+            // ساخت آدرس سابسcriber با پورت و path صحیح
+            $baseUrl = rtrim($this->baseUrl, '/') . ':' . $port . $path;
+
+            Log::debug(static::class . ' subscription URL.', ['url' => $baseUrl, 'port' => $port, 'path' => $path]);
+
+            return [
+                'url'   => $baseUrl,
+                'port'  => $port,
+                'path'  => $path,
+            ];
         } catch (\Throwable $e) {
             Log::debug(static::class . ' could not get subscription settings.', ['message' => $e->getMessage()]);
-            // آدرس پیش‌فرض سابسکریپشن
-            $baseUrl = $this->baseUrl . $this->basePath . '/sub';
-            return $baseUrl;
+            return null;
         }
     }
 

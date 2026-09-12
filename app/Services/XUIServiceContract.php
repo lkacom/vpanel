@@ -29,9 +29,10 @@ interface XUIServiceContract
     public function updateClient(int $inboundId, string $clientId, array $clientData): array;
 
     /**
-     * دریافت آدرس پایه سابسکریپشن
+     * دریافت آدرس کامل سابسکریپشن
      *
-     * @return string|null آدرس پایه سابسکریپشن یا null اگر در دسترس نباشد
+     * @param  int|null  $inboundId  شناسه inbound برای دریافت پورت و مسیر
+     * @return array{url: string, port: int, path: string}|null آدرس کامل سابسکریپشن یا null اگر در دسترس نباشد
      */
-    public function getSubscriptionBaseUrl(): ?string;
+    public function getSubscriptionUrl(?int $inboundId = null): ?array;
 }

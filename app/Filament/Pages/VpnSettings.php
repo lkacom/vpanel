@@ -112,6 +112,8 @@ class VpnSettings extends Page implements HasForms
             TextInput::make('xui_host')->label('آدرس کامل پنل')->required($required),
             TextInput::make('xui_user')->label('نام کاربری')->required($required),
             TextInput::make('xui_pass')->label('رمز عبور')->password()->required($required),
+            TextInput::make('xui_subscription_port')->label('پورت sub')->numeric()->default('2096'),
+            TextInput::make('xui_subscription_path')->label('مسیر sub')->default('/sub'),
         ];
     }
 

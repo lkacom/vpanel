@@ -121,14 +121,17 @@ trait ManagesServiceProvisioning
                 $response = $xuiService->addClient($inboundData['id'], $clientData);
 
                 if ($response && isset($response['success']) && $response['success']) {
-                    // تشخیص خودکار نوع لینک: سابسکریپشن یا تکی
-                    $subBaseUrl = $xuiService->getSubscriptionBaseUrl();
-                    if ($subBaseUrl) {
-                        $subId = $response['generated_subId'] ?? null;
-                        if ($subId) {
-                            $finalConfig = $subBaseUrl . '/' . $subId;
-                            $success = true;
-                        }
+                    // دریافت ID inbound از inboundData
+                    $inboundId = null;
+                    if (isset($inboundData['id']) && is_numeric($inboundData['id'])) {
+                        $inboundId = (int) $inboundData['id'];
+                    }
+
+                    // دریافت آدرس سابسکریپشن از پنل
+                    $subInfo = $xuiService->getSubscriptionUrl($inboundId);
+                    if ($subInfo && ($response['generated_subId'] ?? null)) {
+                        $finalConfig = $subInfo['url'] . '/' . $response['generated_subId'];
+                        $success = true;
                     }
 
                     if (! $success) {

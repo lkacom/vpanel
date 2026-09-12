@@ -174,13 +174,14 @@ class AlirezaXUIService extends AbstractXUIService
     }
 
     /**
-     * دریافت آدرس پایه سابسکریپشن
+     * دریافت آدرس کامل سابسکریپشن
      *
      * پنل علیرضا سابسکریپشن را در مسیر /sub/{subId} ارائه می‌دهد
      *
-     * @return string|null آدرس پایه سابسکریپشن یا null اگر در دسترس نباشد
+     * @param  int|null  $inboundId  شناسه inbound برای دریافت پورت و مسیر
+     * @return array{url: string, port: int, path: string}|null آدرس کامل سابسکریپشن یا null اگر در دسترس نباشد
      */
-    public function getSubscriptionBaseUrl(): ?string
+    public function getSubscriptionUrl(?int $inboundId = null): ?array
     {
         if (! $this->login()) {
             return null;
@@ -188,9 +189,27 @@ class AlirezaXUIService extends AbstractXUIService
 
         try {
             // آدرس پایه سابسکریپشن = آدرس کامل پنل + /sub
-            $baseUrl = $this->baseUrl . $this->basePath . '/sub';
-            Log::debug(static::class . ' subscription base URL.', ['url' => $baseUrl]);
-            return $baseUrl;
+            // پورت از baseUrl گرفته می‌شود
+            $parsedUrl = parse_url($this->baseUrl);
+            $port = (int) ($parsedUrl['port'] ?? 443);
+
+            // دریافت مسیر از inbound اگر موجود باشد
+            $path = '/sub';
+            if ($inboundId) {
+                $inbounds = $this->getInbounds();
+                $inbound = collect($inbounds)->firstWhere('id', $inboundId);
+                if ($inbound) {
+                    $streamSettings = $inbound['streamSettings'] ?? [];
+                    if (is_string($streamSettings)) {
+                        $streamSettings = json_decode($streamSettings, true) ?? [];
+                    }
+                    $path = '/sub';
+                }
+            }
+
+            $url = $this->baseUrl . ':' . $port . '/sub';
+            Log::debug(static::class . ' subscription URL.', ['url' => $url, 'port' => $port]);
+            return ['url' => $url, 'port' => $port, 'path' => '/sub'];
         } catch (\Throwable $e) {
             Log::debug(static::class . ' could not get subscription settings.', ['message' => $e->getMessage()]);
             return null;

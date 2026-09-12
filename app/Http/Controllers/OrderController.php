@@ -370,13 +370,18 @@ class OrderController extends Controller
             throw new \Exception('خطا در ساخت اکانت در پنل.');
         }
 
+        // دریافت ID inbound از primaryData یا لیست inboundIds
+        $inboundId = null;
+        if (isset($primaryData['id']) && is_numeric($primaryData['id'])) {
+            $inboundId = (int) $primaryData['id'];
+        } elseif (count($inboundIds) > 0) {
+            $inboundId = $inboundIds[0];
+        }
+
         // تشخیص خودکار نوع لینک: سابسکریپشن یا تکی
-        $subBaseUrl = $xuiService->getSubscriptionBaseUrl();
-        if ($subBaseUrl) {
-            $subId = $response['generated_subId'];
-            if ($subId) {
-                return [true, $subBaseUrl . '/' . $subId];
-            }
+        $subInfo = $xuiService->getSubscriptionUrl($inboundId);
+        if ($subInfo && ($response['generated_subId'] ?? null)) {
+            return [true, $subInfo['url'] . '/' . $response['generated_subId']];
         }
 
         // Single link: ساخت لینک VLESS از اطلاعات inbound اول
@@ -434,9 +439,9 @@ class OrderController extends Controller
                 if (! ($addResp['success'] ?? false)) {
                     throw new \Exception('خطا در تمدید سرویس.');
                 }
-                $subBaseUrl = $xuiService->getSubscriptionBaseUrl();
-                $newSubId   = $addResp['generated_subId'];
-                return [true, $subBaseUrl . '/' . $newSubId];
+                $subInfo  = $xuiService->getSubscriptionUrl($primaryId);
+                $newSubId = $addResp['generated_subId'];
+                return [true, ($subInfo['url'] ?? $subInfo['url'] ?? '') . '/' . $newSubId];
             }
 
             $clientData['id'] = $clientId;
