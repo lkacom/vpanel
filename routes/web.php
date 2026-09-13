@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
 use App\Http\Controllers\WebhookController as NowPaymentsWebhookController;
+use App\Http\Controllers\ZarinpalController;
 
 /*
 |--------------------------------------------------------------------------
@@ -115,6 +116,11 @@ Route::middleware(['auth'])->group(function () {
 });
 
 Route::post('/webhooks/nowpayments', [NowPaymentsWebhookController::class, 'handle'])->name('webhooks.nowpayments');
+
+// ── ZarinPal Payment Gateway ────────────────────────────────────────────────
+Route::middleware('auth')->post('/payment/zarinpal/{order}', [ZarinpalController::class, 'initiate'])->name('payment.zarinpal.initiate');
+Route::get('/payment/zarinpal/callback', [ZarinpalController::class, 'callback'])->name('payment.zarinpal.callback');
+// ────────────────────────────────────────────────────────────────────────────
 
 
 /* BREEZE AUTHENTICATION */

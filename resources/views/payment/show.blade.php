@@ -90,6 +90,30 @@
                             </button>
                         </form>
 
+                        {{-- درگاه زرین‌پال --}}
+                        @php
+                            $zarinpalEnabled = \App\Models\Setting::where('key', 'zarinpal_merchant_id')->whereNotNull('value')->where('value', '!=', '')->exists();
+                            $zarinpalSandbox = filter_var(\App\Models\Setting::where('key', 'zarinpal_sandbox')->value('value'), FILTER_VALIDATE_BOOLEAN);
+                        @endphp
+                        @if($zarinpalEnabled)
+                        <form method="POST" action="{{ route('payment.zarinpal.initiate', $order->id) }}">
+                            @csrf
+                            <button type="submit"
+                                    class="w-full text-center p-6 border-2 rounded-lg hover:border-yellow-400 transition dark:border-gray-600 dark:hover:border-yellow-400 group">
+                                <div class="flex items-center justify-center mb-2">
+                                    <svg class="w-7 h-7 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
+                                    </svg>
+                                </div>
+                                <h4 class="font-bold text-gray-900 dark:text-gray-100">پرداخت آنلاین — زرین‌پال</h4>
+                                <p class="text-sm text-gray-600 dark:text-gray-400 mt-2">پرداخت سریع و امن با کارت بانکی</p>
+                                @if($zarinpalSandbox)
+                                <span class="inline-block mt-2 text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">حالت آزمایشی</span>
+                                @endif
+                            </button>
+                        </form>
+                        @endif
+
                         {{-- گزینه ارز دیجیتال (غیرفعال) --}}
                         <div class="w-full text-center p-6 border-2 rounded-lg transition dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 cursor-not-allowed opacity-60">
                             <h4 class="font-bold text-gray-500 dark:text-gray-400">پرداخت با ارز دیجیتال</h4>

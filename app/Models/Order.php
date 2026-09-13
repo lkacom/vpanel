@@ -14,7 +14,9 @@ class Order extends Model
         'amount',
         'source',
         'panel_username',
-
+        'zarinpal_authority',
+        'zarinpal_ref_id',
+        'renews_order_id',
     ];
 
     public function user()

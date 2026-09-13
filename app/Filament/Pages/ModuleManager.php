@@ -85,18 +85,66 @@ class ModuleManager extends Page implements HasForms
         $zipPath = $file->getRealPath();
 
         $zip = new ZipArchive;
-        if ($zip->open($zipPath) === TRUE) {
-            $zip->extractTo(base_path('Modules/'));
-            $zip->close();
-
-            Artisan::call('module:scan');
-            $this->loadModules();
-            $this->form->fill();
-
-            Notification::make()->title("افزونه با موفقیت نصب شد.")->body("لطفاً افزونه جدید را از لیست زیر فعال کنید.")->success()->send();
-        } else {
-            Notification::make()->title("خطا در باز کردن فایل Zip.")->danger()->send();
+        if ($zip->open($zipPath) !== TRUE) {
+            Notification::make()->title('خطا در باز کردن فایل Zip.')->danger()->send();
+            return;
         }
+
+        // پیدا کردن نام پوشه ماژول از داخل ZIP
+        $moduleName = null;
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $entry = $zip->getNameIndex($i);
+            $parts = explode('/', trim($entry, '/'));
+            if (count($parts) >= 1 && ! empty($parts[0])) {
+                $moduleName = $parts[0];
+                break;
+            }
+        }
+
+        if (! $moduleName) {
+            Notification::make()->title('ساختار ZIP نامعتبر است.')->danger()->send();
+            $zip->close();
+            return;
+        }
+
+        // بررسی وجود module.json در ZIP
+        $hasModuleJson = false;
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            if (str_ends_with($zip->getNameIndex($i), 'module.json')) {
+                $hasModuleJson = true;
+                break;
+            }
+        }
+
+        if (! $hasModuleJson) {
+            Notification::make()->title('فایل module.json یافت نشد — فایل ZIP معتبر نیست.')->danger()->send();
+            $zip->close();
+            return;
+        }
+
+        $zip->extractTo(base_path('Modules/'));
+        $zip->close();
+
+        // ثبت در modules_statuses.json به عنوان غیرفعال
+        $statusFile = base_path('modules_statuses.json');
+        $statuses = json_decode(file_get_contents($statusFile), true) ?? [];
+        if (! isset($statuses[$moduleName])) {
+            $statuses[$moduleName] = false;
+            file_put_contents($statusFile, json_encode($statuses, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+        }
+
+        // scan و migration
+        Artisan::call('module:scan');
+        Artisan::call('migrate', ['--force' => true]);
+
+        $this->loadModules();
+        $this->form->fill();
+
+        Notification::make()
+            ->title("افزونه {$moduleName} با موفقیت نصب شد.")
+            ->body('افزونه در لیست زیر اضافه شد. برای فعال‌سازی دکمه «فعال» را بزنید.')
+            ->success()
+            ->send();
     }
 
     public function enableModule(string $moduleName)
