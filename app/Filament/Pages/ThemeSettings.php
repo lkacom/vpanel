@@ -171,6 +171,12 @@ class ThemeSettings extends Page implements HasForms
                         Section::make('درگاه زرین‌پال')
                             ->description('تنظیمات اتصال به درگاه پرداخت زرین‌پال')
                             ->schema([
+                                \Filament\Forms\Components\Toggle::make('zarinpal_active')
+                                    ->label('فعال‌سازی درگاه زرین‌پال')
+                                    ->helperText('درگاه را برای کاربران نمایش دهید یا مخفی کنید.')
+                                    ->onColor('success')
+                                    ->offColor('gray')
+                                    ->columnSpanFull(),
                                 TextInput::make('zarinpal_merchant_id')
                                     ->label('کد پذیرنده (Merchant ID)')
                                     ->placeholder('xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx')
@@ -181,16 +187,11 @@ class ThemeSettings extends Page implements HasForms
                                     ->label('واحد پول')
                                     ->options(['IRT' => 'تومان (IRT)', 'IRR' => 'ریال (IRR)'])
                                     ->default('IRT'),
-                                TextInput::make('zarinpal_description')
-                                    ->label('توضیحات پیش‌فرض تراکنش')
-                                    ->placeholder('خرید اشتراک')
-                                    ->maxLength(255),
-                                TextInput::make('zarinpal_callback_url')
-                                    ->label('آدرس Callback')
-                                    ->placeholder(url('/payment/zarinpal/callback'))
-                                    ->helperText('این آدرس را در پنل زرین‌پال هم ثبت کنید.')
-                                    ->url()
-                                    ->columnSpanFull(),
+                                TextInput::make('zarinpal_gateway_name')
+                                    ->label('نام نمایشی درگاه')
+                                    ->placeholder('پرداخت آنلاین — زرین‌پال')
+                                    ->helperText('این نام در دکمه انتخاب روش پرداخت به کاربر نمایش داده می‌شود.')
+                                    ->maxLength(100),
                                 \Filament\Forms\Components\Toggle::make('zarinpal_sandbox')
                                     ->label('حالت آزمایشی (Sandbox)')
                                     ->helperText('فعال کنید تا پول واقعی کسر نشود — فقط برای تست.')

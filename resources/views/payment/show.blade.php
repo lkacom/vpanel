@@ -9,7 +9,6 @@
         <div class="max-w-3xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg p-6 space-y-8">
 
-
                 @if (session('status'))
                     <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded-xl">
                         <p>{{ session('status') }}</p>
@@ -20,7 +19,6 @@
                         <p>{{ session('error') }}</p>
                     </div>
                 @endif
-
 
                 <div>
                     <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 text-right border-b dark:border-gray-700 pb-3 mb-4">
@@ -46,26 +44,33 @@
                     </div>
                 </div>
 
-
                 <div>
                     <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 text-right">
                         انتخاب روش پرداخت
                     </h3>
+
+                    @php
+                        $zSettings       = \App\Models\Setting::all()->pluck('value', 'key');
+                        $zarinpalActive  = filter_var($zSettings->get('zarinpal_active'), FILTER_VALIDATE_BOOLEAN);
+                        $zarinpalEnabled = $zarinpalActive && ! empty($zSettings->get('zarinpal_merchant_id'));
+                        $zarinpalSandbox = filter_var($zSettings->get('zarinpal_sandbox'), FILTER_VALIDATE_BOOLEAN);
+                        $zarinpalName    = $zSettings->get('zarinpal_gateway_name') ?: 'پرداخت آنلاین — زرین‌پال';
+                    @endphp
+
                     <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-6">
 
-
+                        {{-- کیف پول --}}
                         @if ($order->plan)
                         <form method="POST" action="{{ route('payment.wallet.process', $order->id) }}">
                             @csrf
                             <button type="submit"
                                     class="w-full text-center p-6 border-2 rounded-lg transition dark:border-gray-600
-                                               @if($order->plan->price > auth()->user()->balance)
-                                                   border-red-400 cursor-not-allowed bg-red-50 dark:bg-red-900/20
-                                               @else
-                                                   hover:border-purple-500 dark:hover:border-purple-500
-                                               @endif"
+                                        @if($order->plan->price > auth()->user()->balance)
+                                            border-red-400 cursor-not-allowed bg-red-50 dark:bg-red-900/20
+                                        @else
+                                            hover:border-purple-500 dark:hover:border-purple-500
+                                        @endif"
                                     @if($order->plan->price > auth()->user()->balance) disabled @endif>
-
                                 <h4 class="font-bold text-gray-900 dark:text-gray-100">پرداخت از کیف پول (آنی)</h4>
                                 <p class="text-sm text-gray-600 dark:text-gray-400 mt-2">
                                     موجودی شما: {{ number_format(auth()->user()->balance) }} تومان
@@ -77,35 +82,23 @@
                         </form>
                         @endif
 
-
-
+                        {{-- کارت به کارت --}}
                         <form method="POST" action="{{ route('payment.card.process', $order->id) }}">
                             @csrf
                             <button type="submit"
                                     class="w-full text-center p-6 border-2 rounded-lg hover:border-blue-500 transition dark:border-gray-600 dark:hover:border-blue-500">
                                 <h4 class="font-bold text-gray-900 dark:text-gray-100">پرداخت با کارت به کارت</h4>
-                                <p class="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                                    ارسال رسید و انتظار برای تایید
-                                </p>
+                                <p class="text-sm text-gray-600 dark:text-gray-400 mt-2">ارسال رسید و انتظار برای تایید</p>
                             </button>
                         </form>
 
-                        {{-- درگاه زرین‌پال --}}
-                        @php
-                            $zarinpalEnabled = \App\Models\Setting::where('key', 'zarinpal_merchant_id')->whereNotNull('value')->where('value', '!=', '')->exists();
-                            $zarinpalSandbox = filter_var(\App\Models\Setting::where('key', 'zarinpal_sandbox')->value('value'), FILTER_VALIDATE_BOOLEAN);
-                        @endphp
+                        {{-- زرین‌پال --}}
                         @if($zarinpalEnabled)
                         <form method="POST" action="{{ route('payment.zarinpal.initiate', $order->id) }}">
                             @csrf
                             <button type="submit"
-                                    class="w-full text-center p-6 border-2 rounded-lg hover:border-yellow-400 transition dark:border-gray-600 dark:hover:border-yellow-400 group">
-                                <div class="flex items-center justify-center mb-2">
-                                    <svg class="w-7 h-7 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
-                                    </svg>
-                                </div>
-                                <h4 class="font-bold text-gray-900 dark:text-gray-100">پرداخت آنلاین — زرین‌پال</h4>
+                                    class="w-full text-center p-6 border-2 rounded-lg hover:border-yellow-400 transition dark:border-gray-600 dark:hover:border-yellow-400">
+                                <h4 class="font-bold text-gray-900 dark:text-gray-100">{{ $zarinpalName }}</h4>
                                 <p class="text-sm text-gray-600 dark:text-gray-400 mt-2">پرداخت سریع و امن با کارت بانکی</p>
                                 @if($zarinpalSandbox)
                                 <span class="inline-block mt-2 text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">حالت آزمایشی</span>
@@ -114,12 +107,10 @@
                         </form>
                         @endif
 
-                        {{-- گزینه ارز دیجیتال (غیرفعال) --}}
+                        {{-- ارز دیجیتال (غیرفعال) --}}
                         <div class="w-full text-center p-6 border-2 rounded-lg transition dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 cursor-not-allowed opacity-60">
                             <h4 class="font-bold text-gray-500 dark:text-gray-400">پرداخت با ارز دیجیتال</h4>
-                            <p class="text-sm text-gray-500 dark:text-gray-500 mt-2">
-                                (به زودی)
-                            </p>
+                            <p class="text-sm text-gray-500 dark:text-gray-500 mt-2">(به زودی)</p>
                         </div>
 
                     </div>

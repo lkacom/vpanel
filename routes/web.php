@@ -119,7 +119,8 @@ Route::post('/webhooks/nowpayments', [NowPaymentsWebhookController::class, 'hand
 
 // ── ZarinPal Payment Gateway ────────────────────────────────────────────────
 Route::middleware('auth')->post('/payment/zarinpal/{order}', [ZarinpalController::class, 'initiate'])->name('payment.zarinpal.initiate');
-Route::get('/payment/zarinpal/callback', [ZarinpalController::class, 'callback'])->name('payment.zarinpal.callback');
+Route::get('/payment/zarinpal/receipt', [ZarinpalController::class, 'callback'])->name('payment.zarinpal.callback');
+Route::get('/payment/zarinpal/callback', [ZarinpalController::class, 'callback']);  // backward compat
 // ────────────────────────────────────────────────────────────────────────────
 
 

@@ -7,6 +7,7 @@ use Filament\Actions;
 use App\Filament\Resources\UserResource\Pages;
 use App\Models\User;
 use Filament\Forms;
+use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Schema;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -93,7 +94,7 @@ class UserResource extends Resource
                             ->content(fn (User $record) => '💰 ' . number_format($record->balance ?? 0) . ' تومان')
                             ->columnSpanFull(),
 
-                        Forms\Components\Grid::make(2)
+                        Grid::make(2)
                             ->schema([
                                 Forms\Components\TextInput::make('amount')
                                     ->label('مبلغ تغییر')
