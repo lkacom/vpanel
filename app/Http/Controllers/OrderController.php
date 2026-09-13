@@ -278,7 +278,10 @@ class OrderController extends Controller
             : $marzban->createUser(array_merge($userData, ['username' => $uniqueUsername]));
 
         if ($response && (isset($response['subscription_url']) || isset($response['username']))) {
-            return [true, $marzban->generateSubscriptionLink($response)];
+            // URL خالص subscription — بدون متن توضیحی
+            $nodeHostname = rtrim($settings->get('marzban_node_hostname', ''), '/');
+            $subUrl       = ltrim($response['subscription_url'] ?? '', '/');
+            return [true, $nodeHostname . '/' . $subUrl];
         }
 
         throw new \Exception('خطا در ارتباط با مرزبان: ' . ($response['detail'] ?? 'پاسخ نامعتبر'));
@@ -380,11 +383,26 @@ class OrderController extends Controller
 
         // تشخیص خودکار نوع لینک: سابسکریپشن یا تکی
         $subInfo = $xuiService->getSubscriptionUrl($inboundId);
-        if ($subInfo && ($response['generated_subId'] ?? null)) {
-            return [true, $subInfo['url'] . '/' . $response['generated_subId']];
+        $subId   = $response['generated_subId'] ?? null;
+
+        // subscription link — اولویت اصلی
+        if ($subInfo && $subId) {
+            return [true, rtrim($subInfo['url'], '/') . '/' . $subId];
         }
 
-        // Single link: ساخت لینک VLESS از اطلاعات inbound اول
+        // پنل sub دارد ولی subId در response نیست — از clients بخوان
+        if ($subInfo) {
+            $clients = $xuiService->getClients($inboundId);
+            $client  = collect($clients)->firstWhere('email', $uniqueUsername);
+            if ($client && ! empty($client['subId'])) {
+                return [true, rtrim($subInfo['url'], '/') . '/' . $client['subId']];
+            }
+            if ($client && ! empty($client['id'])) {
+                return [true, rtrim($subInfo['url'], '/') . '/' . $client['id']];
+            }
+        }
+
+        // Fallback فقط وقتی پنل subscription ندارد
         $uuid   = $response['generated_uuid'];
         $config = $this->buildVlessLink($uuid, $primaryData, $settings->get('xui_host', ''), $uniqueUsername);
 
