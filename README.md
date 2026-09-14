@@ -101,7 +101,6 @@ wget -O install.sh https://raw.githubusercontent.com/lkacom/vpanel/main/install.
 
 ### مشخصات پیش فرض ورود
 
-آدرس:http://127.0.0.1/admin
 
 نام کاربری: admin@example.com
 
