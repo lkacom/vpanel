@@ -76,8 +76,8 @@ class VpnSettings extends Page implements HasForms
                             ->label('نوع پنل')
                             ->options([
                                 'marzban' => 'مرزبان',
-                                'sanaei' => 'سنایی (3X-UI)',
-                                'txui' => 'پنل علیرضا (x-ui/tx-ui)',
+                                'sanaei' => 'سنایی',
+                                'txui' => 'پنل علیرضا',
                             ])
                             ->live()
                             ->required(),
