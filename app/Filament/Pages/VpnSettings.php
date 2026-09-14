@@ -74,10 +74,11 @@ class VpnSettings extends Page implements HasForms
                     ->schema([
                         Radio::make('panel_type')
                             ->label('نوع پنل')
+                            ->inline()
                             ->options([
                                 'marzban' => 'مرزبان',
                                 'sanaei' => 'سنایی',
-                                'txui' => 'پنل علیرضا',
+                                'txui' => ' علیرضا',
                             ])
                             ->live()
                             ->required(),
@@ -85,7 +86,7 @@ class VpnSettings extends Page implements HasForms
                         Section::make('تنظیمات پنل مرزبان')
                             ->visible(fn (Get $get): bool => $get('panel_type') === 'marzban')
                             ->schema([
-                                TextInput::make('marzban_host')->label('آدرس پنل مرزبان')->required(),
+                                TextInput::make('marzban_host')->columnSpanFull()->label('آدرس پنل مرزبان')->required(),
                                 TextInput::make('marzban_sudo_username')->label('نام کاربری ادمین')->required(),
                                 TextInput::make('marzban_sudo_password')->label('رمز عبور ادمین')->password()->required(),
                                 TextInput::make('marzban_node_hostname')
