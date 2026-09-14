@@ -42,6 +42,19 @@ banner() {
     echo -e "${CYAN}=====================================================${NC}"
 }
 
+install_banner() {
+    echo -e "${CYAN}"
+    echo "  ╔══════════════════════════════════════════════════════════╗"
+    echo "  ║                                                          ║"
+    echo "  ║               🚀  V P A N E L   I N S T A L L E R        ║"
+    echo "  ║                                                          ║"
+    echo "  ║           Official Installation Script by Iranli         ║"
+    echo "  ║                    www.iranli.com                       ║"
+    echo "  ║                                                          ║"
+    echo "  ╚══════════════════════════════════════════════════════════╝"
+    echo -e "${NC}"
+}
+
 step() {
     echo -e "${YELLOW}$1${NC}"
 }
@@ -64,7 +77,7 @@ require_root() {
 # ===                                INSTALL                                    ===
 # ==================================================================================
 install_vpanel() {
-    banner
+    install_banner
     echo -e "${NC}|| Starting VPanel installation ||${NC}"
     echo
 
@@ -72,18 +85,15 @@ install_vpanel() {
     read -p "🌐 Domain: " DOMAIN
     DOMAIN=$(echo "$DOMAIN" | sed 's|http[s]*://||g' | sed 's|/.*||g')
 
-    read -p "🗃 Database name: " DB_NAME
-    read -p "👤 Database username: " DB_USER
-
-    while true; do
-        read -s -p "🔑 Database password: " DB_PASS
-        echo
-        [ ! -z "$DB_PASS" ] && break
-        error "Password cannot be empty."
-    done
-
-    read -p "✉️ SSL email: " ADMIN_EMAIL
+    read -p "✉️ Email (used for SSL certificate): " ADMIN_EMAIL
     echo
+
+    # --- Auto-generate database credentials ---
+    step "🎲 Generating random database credentials..."
+    DB_NAME="vpanel_$(tr -dc 'a-z0-9' </dev/urandom | head -c 8)"
+    DB_USER="vpuser_$(tr -dc 'a-z0-9' </dev/urandom | head -c 8)"
+    DB_PASS="$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 24)"
+    success "Database credentials generated successfully."
 
     # --- Remove old PHP versions ---
     step "🧹 Removing old PHP versions..."
@@ -153,6 +163,8 @@ install_vpanel() {
     sudo sed -i "s|APP_URL=.*|APP_URL=https://$DOMAIN|" .env
     sudo sed -i "s|APP_ENV=.*|APP_ENV=production|" .env
     sudo sed -i "s|QUEUE_CONNECTION=.*|QUEUE_CONNECTION=redis|" .env
+    # Store the SSL email so future `update` runs can retry issuing a certificate automatically
+    echo "VPANEL_SSL_EMAIL=$ADMIN_EMAIL" | sudo tee -a .env >/dev/null
 
     # --- Install dependencies ---
     step "🧰 Installing Composer packages..."
@@ -229,19 +241,53 @@ EOF
     sudo -u ${WEB_USER} php artisan route:cache
     sudo -u ${WEB_USER} php artisan view:cache
 
-    # --- SSL ---
-    read -p "🔒 Enable SSL? (y/n): " ENABLE_SSL
-    if [[ "$ENABLE_SSL" =~ ^[Yy]$ ]]; then
-        sudo certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos -m "$ADMIN_EMAIL"
+    # --- SSL (enabled by default, never blocks the install) ---
+    step "🔒 Requesting SSL certificate for $DOMAIN..."
+    SSL_ENABLED="no"
+    if sudo certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos -m "$ADMIN_EMAIL"; then
+        success "✔ SSL certificate issued successfully."
+        SSL_ENABLED="yes"
+    else
+        error "⚠️ SSL setup failed (domain not reachable on port 80/443 yet)."
+        error "The rest of the installation completed successfully — the site is available over HTTP."
+        error "Once DNS/firewall is fixed, just run: sudo $0 update"
+        error "(the update process will automatically retry issuing the SSL certificate)"
     fi
+
+    SITE_URL="http://$DOMAIN"
+    [ "$SSL_ENABLED" = "yes" ] && SITE_URL="https://$DOMAIN"
+
+    # --- Save all credentials to a local file for the admin's records ---
+    CREDS_FILE="/root/vpanel-install-info.txt"
+    sudo tee "$CREDS_FILE" >/dev/null <<EOF
+VPanel Installation Info — generated on $(date)
+=================================================
+Site URL:        $SITE_URL
+Admin panel:     $SITE_URL/admin
+Admin email:     admin@example.com
+Admin password:  admin   (change this after first login!)
+
+Database name:     $DB_NAME
+Database user:     $DB_USER
+Database password: $DB_PASS
+
+Installed by: Iranli — www.iranli.com
+EOF
+    sudo chmod 600 "$CREDS_FILE"
 
     echo -e "${GREEN}=====================================================${NC}"
     success "✅ Installation completed successfully!"
-    echo -e "🌐 https://$DOMAIN"
-    echo -e "🔑 Admin panel: https://$DOMAIN/admin"
+    echo -e "🌐 Site:        $SITE_URL"
+    echo -e "🔑 Admin panel: $SITE_URL/admin"
     echo
     echo -e "   - Login email:    ${YELLOW}admin@example.com${NC}"
     echo -e "   - Login password: ${YELLOW}admin${NC}"
+    echo
+    echo -e "   - DB name:        ${YELLOW}$DB_NAME${NC}"
+    echo -e "   - DB user:        ${YELLOW}$DB_USER${NC}"
+    echo -e "   - DB password:    ${YELLOW}$DB_PASS${NC}"
+    echo
+    echo -e "Full credentials also saved to: ${YELLOW}$CREDS_FILE${NC}"
     echo
     error "⚠️ IMPORTANT: Please change the admin password immediately after your first login!"
     echo -e "${GREEN}=====================================================${NC}"
@@ -272,7 +318,7 @@ update_vpanel() {
     echo
 
     # --- Step 1: Prepare environment & enable maintenance mode ---
-    step "Step 1/7: Preparing environment and enabling maintenance mode..."
+    step "Step 1/8: Preparing environment and enabling maintenance mode..."
 
     echo "Creating and setting permissions for the NPM cache folder..."
     sudo mkdir -p /var/www/.npm
@@ -284,37 +330,56 @@ update_vpanel() {
     sudo -u ${WEB_USER} php artisan down || true
 
     # --- Step 2: Pull latest code from GitHub ---
-    step "Step 2/7: Fetching the latest changes from GitHub..."
+    step "Step 2/8: Fetching the latest changes from GitHub..."
     sudo git fetch origin
     sudo git reset --hard origin/main
 
     # --- Step 3: Fix file permissions ---
-    step "Step 3/7: Resetting file permissions..."
+    step "Step 3/8: Resetting file permissions..."
     sudo chown -R ${WEB_USER}:${WEB_USER} .
     sudo chmod -R 775 storage bootstrap/cache
 
     # --- Step 4: Update PHP dependencies (Composer) ---
-    step "Step 4/7: Updating PHP packages..."
+    step "Step 4/8: Updating PHP packages..."
     sudo mkdir -p /var/www/.cache
     sudo chown -R ${WEB_USER}:${WEB_USER} /var/www/.cache
     sudo -u ${WEB_USER} HOME=/var/www composer install --no-dev --optimize-autoloader
 
     # --- Step 5: Update frontend dependencies (NPM) ---
-    step "Step 5/7: Updating Node.js packages and compiling assets..."
+    step "Step 5/8: Updating Node.js packages and compiling assets..."
     sudo -u ${WEB_USER} HOME=/var/www npm install
     sudo -u ${WEB_USER} HOME=/var/www npm run build
     echo "JS/CSS assets compiled for production."
 
     # --- Step 6: Update database & restart services ---
-    step "Step 6/7: Updating database and restarting services..."
+    step "Step 6/8: Updating database and restarting services..."
     sudo -u ${WEB_USER} php artisan migrate --force
     sudo supervisorctl restart vpanel-worker:* || true
     echo "Queue worker services restarted successfully."
 
     # --- Step 7: Clear caches & disable maintenance mode ---
-    step "Step 7/7: Clearing caches and bringing the site back online..."
+    step "Step 7/8: Clearing caches and bringing the site back online..."
     sudo -u ${WEB_USER} php artisan optimize:clear
     sudo -u ${WEB_USER} php artisan up
+
+    # --- Step 8: Retry SSL if it isn't active yet ---
+    DOMAIN=$(grep '^APP_URL=' .env | head -n1 | cut -d '=' -f2- | sed 's|https\?://||' | sed 's|/.*||')
+    SSL_EMAIL=$(grep '^VPANEL_SSL_EMAIL=' .env | head -n1 | cut -d '=' -f2-)
+
+    if [ -n "$DOMAIN" ] && [ ! -f "/etc/letsencrypt/live/$DOMAIN/fullchain.pem" ]; then
+        step "Step 8/8: No active SSL certificate found for $DOMAIN — retrying..."
+        if [ -z "$SSL_EMAIL" ]; then
+            error "⚠️ No saved SSL email found; skipping automatic SSL. Run manually:"
+            error "   sudo certbot --nginx -d $DOMAIN --agree-tos -m your@email.com"
+        elif sudo certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos -m "$SSL_EMAIL"; then
+            success "✔ SSL certificate issued successfully for $DOMAIN."
+        else
+            error "⚠️ SSL still could not be issued (domain/firewall may not be ready yet)."
+            error "The update itself completed successfully."
+        fi
+    else
+        step "Step 8/8: SSL certificate already active for $DOMAIN — nothing to do."
+    fi
 
     echo
     echo -e "${GREEN}=====================================================${NC}"
@@ -329,21 +394,21 @@ update_vpanel() {
 uninstall_vpanel() {
     banner
     step "--- Starting full VPanel removal process ---"
-    error "⚠️ Warning: This action is irreversible and will delete all project files and the database."
+    error "⚠️ Warning: This action is irreversible and will delete all project files, the database, and everything related to this script."
     echo
 
-    # --- Read database info from .env ---
+    # --- Read database and domain info from .env before anything is deleted ---
     ENV_FILE="$PROJECT_PATH/.env"
     if [ -f "$ENV_FILE" ]; then
         DB_NAME=$(grep '^DB_DATABASE=' "$ENV_FILE" | cut -d '=' -f2)
         DB_USER=$(grep '^DB_USERNAME=' "$ENV_FILE" | cut -d '=' -f2)
+        DOMAIN=$(grep '^APP_URL=' "$ENV_FILE" | head -n1 | cut -d '=' -f2- | sed 's|https\?://||' | sed 's|/.*||')
     else
-        error "⚠️ .env file not found. Database removal will be skipped."
+        error "⚠️ .env file not found. Database and SSL removal will be skipped."
         DB_NAME=""
         DB_USER=""
+        DOMAIN=""
     fi
-
-    read -p "🌐 Enter the site domain to remove its SSL certificate (e.g. vpanel.example.com): " DOMAIN
 
     read -p "Are you sure you want to completely remove the project and its configuration? (y/n): " CONFIRMATION
     if [[ "$CONFIRMATION" != "y" && "$CONFIRMATION" != "Y" ]]; then
@@ -352,7 +417,7 @@ uninstall_vpanel() {
     fi
 
     # --- Step 1: Stop services ---
-    step "Step 1/7: Stopping VPanel and related services..."
+    step "Step 1/8: Stopping VPanel and related services..."
     sudo systemctl is-active --quiet php${PHP_VERSION}-fpm && sudo systemctl stop php${PHP_VERSION}-fpm || true
     sudo systemctl is-active --quiet nginx && sudo systemctl stop nginx || true
     sudo systemctl is-active --quiet mysql && sudo systemctl stop mysql || true
@@ -360,7 +425,7 @@ uninstall_vpanel() {
     sudo supervisorctl status &>/dev/null && sudo supervisorctl stop all || true
 
     # --- Step 2: Remove Nginx and Supervisor configs ---
-    step "Step 2/7: Removing configuration files..."
+    step "Step 2/8: Removing configuration files..."
     sudo rm -f /etc/nginx/sites-available/vpanel
     sudo rm -f /etc/nginx/sites-enabled/vpanel
     sudo rm -f /etc/supervisor/conf.d/vpanel-worker.conf
@@ -368,8 +433,8 @@ uninstall_vpanel() {
     sudo supervisorctl reread &>/dev/null || true
     sudo supervisorctl update &>/dev/null || true
 
-    # --- Step 3: Remove project files ---
-    step "Step 3/7: Removing the project folder..."
+    # --- Step 3: Remove project files and script leftovers ---
+    step "Step 3/8: Removing the project folder..."
     if [ -d "$PROJECT_PATH" ]; then
         sudo rm -rf "$PROJECT_PATH"
         success "Project folder removed successfully."
@@ -377,9 +442,13 @@ uninstall_vpanel() {
         step "Project folder not found (it may have already been removed)."
     fi
 
+    step "Removing cache/cred files created by this script..."
+    sudo rm -rf /var/www/.npm /var/www/.cache
+    sudo rm -f /root/vpanel-install-info.txt
+
     # --- Step 4: Remove database and database user ---
     if [ -n "$DB_NAME" ] && [ -n "$DB_USER" ]; then
-        step "Step 4/7: Removing the database and its user..."
+        step "Step 4/8: Removing the database and its user..."
         sudo mysql -e "DROP DATABASE IF EXISTS \`$DB_NAME\`;" || true
         sudo mysql -e "DROP USER IF EXISTS '$DB_USER'@'localhost';" || true
         sudo mysql -e "FLUSH PRIVILEGES;" || true
@@ -389,24 +458,25 @@ uninstall_vpanel() {
     fi
 
     # --- Step 5: Remove PHP ---
-    step "Step 5/7: Removing PHP ${PHP_VERSION} and its modules..."
+    step "Step 5/8: Removing PHP ${PHP_VERSION} and its modules..."
     sudo apt-get remove -y php${PHP_VERSION}* || true
     sudo apt autoremove -y || true
 
     # --- Step 6: Remove Node.js, Composer and dependencies ---
-    step "Step 6/7: Removing Node.js, Composer and project dependencies..."
+    step "Step 6/8: Removing Node.js, Composer and project dependencies..."
     sudo apt-get remove -y nodejs npm || true
     sudo rm -f /usr/local/bin/composer || true
-    sudo rm -rf /var/www/.npm || true
 
     # --- Step 7: Remove SSL certificate ---
-    read -p "Do you also want to remove the SSL certificate for domain $DOMAIN? (y/n): " DELETE_SSL
-    if [[ "$DELETE_SSL" == "y" || "$DELETE_SSL" == "Y" ]]; then
-        step "Step 7/7: Removing SSL certificate..."
+    step "Step 7/8: Removing SSL certificate..."
+    if [ -n "$DOMAIN" ]; then
         sudo certbot delete --cert-name "$DOMAIN" --non-interactive || echo "SSL certificate not found or could not be removed."
+    else
+        step "No domain found in .env — skipping SSL certificate removal."
     fi
 
-    # --- Restart core services ---
+    # --- Step 8: Restart core services ---
+    step "Step 8/8: Restarting remaining core services..."
     sudo systemctl is-active --quiet nginx && sudo systemctl start nginx || true
     sudo systemctl is-active --quiet mysql && sudo systemctl start mysql || true
     sudo systemctl is-active --quiet redis-server && sudo systemctl start redis-server || true
