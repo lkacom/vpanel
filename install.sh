@@ -32,7 +32,7 @@ NC='\033[0m'
 # ---------------------------- Globals ----------------------------
 PROJECT_PATH="/var/www/vpanel"
 GITHUB_REPO="https://github.com/lkacom/vpanel.git"
-PHP_VERSION="8.3"
+PHP_VERSION="8.4"
 WEB_USER="www-data"
 
 # ---------------------------- Helpers ----------------------------
@@ -156,8 +156,11 @@ install_vpanel() {
 
     # --- Install dependencies ---
     step "🧰 Installing Composer packages..."
-    sudo -u ${WEB_USER} composer install --no-dev --optimize-autoloader
-    sudo -u ${WEB_USER} composer require morilog/jalali
+    # Prepare a writable HOME/cache dir for www-data so Composer's cache works correctly
+    sudo mkdir -p /var/www/.cache
+    sudo chown -R ${WEB_USER}:${WEB_USER} /var/www/.cache
+    sudo -u ${WEB_USER} HOME=/var/www composer install --no-dev --optimize-autoloader
+    sudo -u ${WEB_USER} HOME=/var/www composer require morilog/jalali
 
     step "📦 Installing Node.js packages..."
     sudo -u ${WEB_USER} rm -rf node_modules package-lock.json
@@ -292,7 +295,9 @@ update_vpanel() {
 
     # --- Step 4: Update PHP dependencies (Composer) ---
     step "Step 4/7: Updating PHP packages..."
-    sudo -u ${WEB_USER} composer install --no-dev --optimize-autoloader
+    sudo mkdir -p /var/www/.cache
+    sudo chown -R ${WEB_USER}:${WEB_USER} /var/www/.cache
+    sudo -u ${WEB_USER} HOME=/var/www composer install --no-dev --optimize-autoloader
 
     # --- Step 5: Update frontend dependencies (NPM) ---
     step "Step 5/7: Updating Node.js packages and compiling assets..."
