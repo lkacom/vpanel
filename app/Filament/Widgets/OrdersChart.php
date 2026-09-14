@@ -18,7 +18,7 @@ class OrdersChart extends ChartWidget
 
         for ($i = 30; $i >= 0; $i--) {
             $date = now()->subDays($i)->toDateString();
-            $labels[] = Jalalian::fromDateTime($date)->format('Y/m/d');;
+            $labels[] = Jalalian::fromDateTime($date)->format('m/d');;
 
             $count = Order::whereDate('updated_at', $date)->where('status', 'paid')->count();
 

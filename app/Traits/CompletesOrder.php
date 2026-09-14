@@ -160,14 +160,51 @@ trait CompletesOrder
             ? $marzban->updateUser($uniqueUsername, $userData)
             : $marzban->createUser(array_merge($userData, ['username' => $uniqueUsername]));
 
-        if ($response && (isset($response['subscription_url']) || isset($response['username']))) {
-            // URL خالص — بدون متن توضیحی فارسی
-            $nodeHostname = rtrim($settings->get('marzban_node_hostname', ''), '/');
-            $subUrl       = ltrim($response['subscription_url'] ?? '', '/');
+        if (! $response || (! isset($response['subscription_url']) && ! isset($response['username']))) {
+            throw new \Exception('خطا در ارتباط با مرزبان: ' . ($response['detail'] ?? 'پاسخ نامعتبر'));
+        }
+
+        $subEnabled   = filter_var($settings->get('xui_subscription_enabled') ?? true, FILTER_VALIDATE_BOOLEAN);
+        $nodeHostname = rtrim($settings->get('marzban_node_hostname', ''), '/');
+
+        if ($subEnabled && isset($response['subscription_url'])) {
+            // لینک سابسکریپشن خالص
+            $subUrl = ltrim($response['subscription_url'], '/');
             return [true, $nodeHostname . '/' . $subUrl];
         }
 
-        throw new \Exception('خطا در ارتباط با مرزبان: ' . ($response['detail'] ?? 'پاسخ نامعتبر'));
+        // در غیر این صورت کانفیگ‌های مستقیم از API مرزبان بگیر
+        // مرزبان API یک subscription_url دارد که شامل همه کانفیگ‌هاست
+        // برای direct link باید /sub/username را fetch کرد
+        // و خروجی را parse کنیم
+        if (isset($response['subscription_url'])) {
+            $subUrl  = $nodeHostname . '/' . ltrim($response['subscription_url'], '/');
+            $configs = $this->fetchMarzbanDirectConfigs($subUrl);
+            if (! empty($configs)) {
+                return [true, implode("\n", $configs)];
+            }
+        }
+
+        throw new \Exception('نمی‌توان کانفیگ سرویس را دریافت کرد.');
+    }
+
+    private function fetchMarzbanDirectConfigs(string $subUrl): array
+    {
+        try {
+            $response = \Illuminate\Support\Facades\Http::timeout(10)->get($subUrl);
+            if ($response->successful()) {
+                // پاسخ base64 است یا متن مستقیم
+                $body    = trim($response->body());
+                $decoded = base64_decode($body, true);
+                $text    = ($decoded && str_contains($decoded, '://')) ? $decoded : $body;
+                // خطوطی که با vless:// ، vmess:// ، trojan:// ، ss:// شروع می‌شوند
+                $lines   = array_filter(explode("\n", $text), fn($l) => preg_match('/^(vless|vmess|trojan|ss):/\//', trim($l)));
+                return array_values($lines);
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('fetchMarzbanDirectConfigs failed', ['url' => $subUrl, 'error' => $e->getMessage()]);
+        }
+        return [];
     }
 
     // ── X-UI ─────────────────────────────────────────────────────

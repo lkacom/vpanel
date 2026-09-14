@@ -89,6 +89,10 @@ class VpnSettings extends Page implements HasForms
                                 TextInput::make('marzban_sudo_username')->label('نام کاربری ادمین')->required(),
                                 TextInput::make('marzban_sudo_password')->label('رمز عبور ادمین')->password()->required(),
                                 TextInput::make('marzban_node_hostname')->label('آدرس دامنه/سرور برای کانفیگ'),
+                                \Filament\Forms\Components\Toggle::make('xui_subscription_enabled')
+                                    ->label('فعال‌سازی Subscription مرزبان')
+                                    ->helperText('کاربر لینک sub دریافت کند. در غیر این صورت کانفیگ مستقیم داده می‌شود.')
+                                    ->onColor('success')->offColor('gray')->live()->columnSpanFull(),
                             ]),
 
                         Section::make('تنظیمات پنل سنایی')
@@ -112,8 +116,24 @@ class VpnSettings extends Page implements HasForms
             TextInput::make('xui_host')->label('آدرس کامل پنل')->required($required),
             TextInput::make('xui_user')->label('نام کاربری')->required($required),
             TextInput::make('xui_pass')->label('رمز عبور')->password()->required($required),
-            TextInput::make('xui_subscription_port')->label('پورت sub')->numeric()->default('2096'),
-            TextInput::make('xui_subscription_path')->label('مسیر sub')->default('/sub'),
+            \Filament\Forms\Components\Toggle::make('xui_subscription_enabled')
+                ->label('فعال‌سازی Subscription')
+                ->helperText('در صورت فعال بودن، کاربر لینک sub دریافت می‌کند. در غیر این صورت، کانفیگ مستقیم (vless://) تحویل می‌شود.')
+                ->onColor('success')
+                ->offColor('gray')
+                ->live()
+                ->columnSpanFull(),
+            TextInput::make('xui_subscription_port')
+                ->label('پورت Subscription')
+                ->numeric()
+                ->default('2096')
+                ->helperText('معمولاً 2096')
+                ->visible(fn (Get $get): bool => (bool) $get('xui_subscription_enabled')),
+            TextInput::make('xui_subscription_path')
+                ->label('مسیر Subscription')
+                ->default('/sub')
+                ->helperText('معمولاً /sub')
+                ->visible(fn (Get $get): bool => (bool) $get('xui_subscription_enabled')),
         ];
     }
 
