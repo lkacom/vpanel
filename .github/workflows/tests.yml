@@ -43,7 +43,8 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.3'
+          # Symfony 8 packages in composer.lock require PHP >= 8.4.1.
+          php-version: '8.4'
           extensions: bcmath, curl, dom, gd, mbstring, pdo_mysql, xml, zip
           coverage: none
           tools: composer:v2
