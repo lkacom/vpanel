@@ -100,10 +100,13 @@ wget -O install.sh https://raw.githubusercontent.com/lkacom/vpanel/main/install.
 
 ### مشخصات پیش فرض ورود
 
+http://127.0.0.1/admin
+
 نام کاربری: admin@example.com
+
 رمز عبور: admin
 
-پس از اولین ورود فورا" رمز عبور خود را تغییر دهید.
+پس از اولین ورود رمز عبور خود را تغییر دهید.
 
 
 ## 💬 پشتیبانی و جامعه کاربری
