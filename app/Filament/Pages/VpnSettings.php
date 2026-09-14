@@ -88,12 +88,25 @@ class VpnSettings extends Page implements HasForms
                                 TextInput::make('marzban_host')->label('آدرس پنل مرزبان')->required(),
                                 TextInput::make('marzban_sudo_username')->label('نام کاربری ادمین')->required(),
                                 TextInput::make('marzban_sudo_password')->label('رمز عبور ادمین')->password()->required(),
-                                TextInput::make('marzban_node_hostname')->label('آدرس دامنه/سرور برای کانفیگ'),
+                                TextInput::make('marzban_node_hostname')
+                                    ->label('دامنه/آدرس سرور برای کانفیگ')
+                                    ->helperText('آدرس پایه subscription — مثل: https://sub.example.com')
+                                    ->columnSpanFull(),
                                 \Filament\Forms\Components\Toggle::make('xui_subscription_enabled')
-                                    ->label('فعال‌سازی Subscription مرزبان')
-                                    ->helperText('کاربر لینک sub دریافت کند. در غیر این صورت کانفیگ مستقیم داده می‌شود.')
+                                    ->label('فعال‌سازی Subscription')
+                                    ->helperText('اگر فعال باشد، کاربر لینک sub دریافت می‌کند. در غیر این صورت کانفیگ مستقیم داده می‌شود.')
                                     ->onColor('success')->offColor('gray')->live()->columnSpanFull(),
-                            ]),
+                                TextInput::make('xui_subscription_port')
+                                    ->label('پورت Subscription')
+                                    ->numeric()->default('2096')
+                                    ->helperText('پیش‌فرض: 2096')
+                                    ->visible(fn (Get $get): bool => (bool) $get('xui_subscription_enabled')),
+                                TextInput::make('xui_subscription_path')
+                                    ->label('مسیر Subscription')
+                                    ->default('/sub')
+                                    ->helperText('پیش‌فرض: /sub')
+                                    ->visible(fn (Get $get): bool => (bool) $get('xui_subscription_enabled')),
+                            ])->columns(2),
 
                         Section::make('تنظیمات پنل سنایی')
                             ->visible(fn (Get $get): bool => $get('panel_type') === 'sanaei')
@@ -107,7 +120,6 @@ class VpnSettings extends Page implements HasForms
             ->statePath('connectionData');
     }
 
-    /** @return array<string, string> */
     private function xuiConnectionSchema(array $panelTypes): array
     {
         $required = fn (Get $get): bool => in_array($get('panel_type'), $panelTypes, true);
@@ -118,7 +130,7 @@ class VpnSettings extends Page implements HasForms
             TextInput::make('xui_pass')->label('رمز عبور')->password()->required($required),
             \Filament\Forms\Components\Toggle::make('xui_subscription_enabled')
                 ->label('فعال‌سازی Subscription')
-                ->helperText('اگر از فعال بودن subscription در پنل خود اطمینان دارید با فعال کردن این گزینه، کاربر لینک sub دریافت می‌کند.')
+                ->helperText('اگر از فعال بودن subscription در پنل خود اطمینان دارید، کاربر لینک sub دریافت می‌کند. در غیر این صورت تمام کانفیگ‌های مستقیم داده می‌شود.')
                 ->onColor('success')
                 ->offColor('gray')
                 ->live()

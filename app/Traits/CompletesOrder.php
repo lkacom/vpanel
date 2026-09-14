@@ -10,28 +10,24 @@ use App\Models\Transaction;
 use App\Services\MarzbanService;
 use App\Services\XUIServiceFactory;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
-/**
- * منطق مشترک تکمیل سفارش پس از پرداخت موفق
- * هم ZarinpalController و هم OrderController از این trait استفاده می‌کنند
- */
 trait CompletesOrder
 {
     protected function completeOrder(Order $order, string $paymentMethod, string $transactionNote = ''): void
     {
-        $user   = $order->user;
         $amount = $order->plan_id
             ? (int) optional($order->plan)->price
             : (int) $order->amount;
 
         if ($order->plan_id) {
-            $this->provisionVpnService($order, $user, $amount, $paymentMethod, $transactionNote);
+            $this->provisionVpnService($order, $order->user, $amount, $paymentMethod, $transactionNote);
         } else {
-            DB::transaction(function () use ($order, $user, $amount, $paymentMethod, $transactionNote) {
+            DB::transaction(function () use ($order, $amount, $paymentMethod, $transactionNote) {
+                $user = $order->user;
                 $order->update(['status' => 'paid', 'payment_method' => $paymentMethod]);
                 $user->increment('balance', $amount);
+
                 Transaction::create([
                     'user_id'     => $user->id,
                     'order_id'    => $order->id,
@@ -40,12 +36,14 @@ trait CompletesOrder
                     'status'      => Transaction::STATUS_COMPLETED,
                     'description' => $transactionNote ?: 'شارژ کیف پول',
                 ]);
+
                 $user->notifications()->create([
                     'type'    => 'wallet_charged',
                     'title'   => 'کیف پول شما شارژ شد',
                     'message' => 'مبلغ ' . number_format($amount) . ' تومان به کیف پول شما اضافه شد.',
                     'link'    => route('dashboard'),
                 ]);
+
                 OrderPaid::dispatch($order);
             });
         }
@@ -75,9 +73,9 @@ trait CompletesOrder
         $timestamp    = $newExpiresAt->getTimestamp();
 
         [$success, $finalConfig] = match ($panelType) {
-            'marzban'             => $this->handleMarzban($settings, $plan, $isRenewal, $uniqueUsername, $timestamp),
-            'sanaei', 'txui', 'xui' => $this->handleXUI($panelType, $settings, $plan, $order, $isRenewal, $uniqueUsername, $timestamp, $newExpiresAt),
-            default               => throw new \Exception('نوع پنل در تنظیمات مشخص نشده است.'),
+            'marzban'         => $this->handleMarzban($settings, $plan, $isRenewal, $uniqueUsername, $timestamp),
+            'sanaei','txui','xui' => $this->handleXUI($panelType, $settings, $plan, $order, $isRenewal, $uniqueUsername, $timestamp, $newExpiresAt),
+            default           => throw new \Exception('نوع پنل در تنظیمات مشخص نشده است.'),
         };
 
         if (! $success) {
@@ -147,45 +145,39 @@ trait CompletesOrder
             throw new \Exception('خطا در ارتباط با مرزبان: ' . ($response['detail'] ?? 'پاسخ نامعتبر'));
         }
 
-        $subEnabled   = filter_var($settings->get('xui_subscription_enabled') ?? true, FILTER_VALIDATE_BOOLEAN);
-        $nodeHostname = rtrim($settings->get('marzban_node_hostname', ''), '/');
-        $subPath      = ltrim($response['subscription_url'] ?? '', '/');
-        $subUrl       = $nodeHostname . '/' . $subPath;
+        $subEnabled = filter_var($settings->get('xui_subscription_enabled') ?? false, FILTER_VALIDATE_BOOLEAN);
 
-        if ($subEnabled) {
-            return [true, $subUrl];
-        }
+        if ($subEnabled && isset($response['subscription_url'])) {
+            // ── subscription link ──────────────────────────────────────────
+            $nodeHostname = rtrim($settings->get('marzban_node_hostname', ''), '/');
+            $subPort      = $settings->get('xui_subscription_port') ?: '2096';
+            $subPath      = rtrim($settings->get('xui_subscription_path') ?: '/sub', '/');
+            $subId        = ltrim($response['subscription_url'], '/');
 
-        // Sub غیرفعال — کانفیگ‌های مستقیم fetch کن
-        $configs = $this->fetchMarzbanDirectConfigs($subUrl);
-        if (! empty($configs)) {
-            return [true, count($configs) === 1 ? $configs[0] : json_encode($configs, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)];
-        }
-
-        throw new \Exception('نمی‌توان کانفیگ سرویس را از مرزبان دریافت کرد.');
-    }
-
-    private function fetchMarzbanDirectConfigs(string $subUrl): array
-    {
-        try {
-            $response = Http::timeout(15)->get($subUrl);
-            if ($response->successful()) {
-                $body    = trim($response->body());
-                $decoded = base64_decode($body, true);
-                $text    = ($decoded !== false && preg_match('/^(vless|vmess|trojan|ss):\/\//', trim($decoded))) ? $decoded : $body;
-                $lines   = array_filter(
-                    array_map('trim', explode("\n", $text)),
-                    fn ($l) => preg_match('/^(vless|vmess|trojan|ss):\/\//', $l)
-                );
-                return array_values($lines);
+            // اگر nodeHostname شامل پورت نیست، پورت sub را اضافه کن
+            $parsedHost = parse_url($nodeHostname);
+            if (empty($parsedHost['port'])) {
+                $base = rtrim($nodeHostname, '/') . ':' . $subPort;
+            } else {
+                $base = $nodeHostname;
             }
-        } catch (\Throwable $e) {
-            Log::warning('fetchMarzbanDirectConfigs failed', ['url' => $subUrl, 'error' => $e->getMessage()]);
+
+            return [true, $base . $subPath . '/' . basename($subId)];
         }
-        return [];
+
+        // ── کانفیگ مستقیم از Marzban (links array) ────────────────────────
+        if (! empty($response['links'])) {
+            $links = array_values(array_filter($response['links']));
+            return [true, count($links) === 1 ? $links[0] : json_encode($links)];
+        }
+
+        // fallback: فقط sub URL خام
+        $nodeHostname = rtrim($settings->get('marzban_node_hostname', ''), '/');
+        $subUrl       = ltrim($response['subscription_url'] ?? '', '/');
+        return [true, $nodeHostname . '/' . $subUrl];
     }
 
-    // ── X-UI (Sanaei / TXUI) ─────────────────────────────────────────────────
+    // ── X-UI ─────────────────────────────────────────────────────────────────
 
     private function handleXUI(string $panelType, $settings, $plan, Order $order, bool $isRenewal, string $uniqueUsername, int $timestamp, \DateTimeInterface $newExpiresAt): array
     {
@@ -223,8 +215,10 @@ trait CompletesOrder
 
     private function createXUIClient($xuiService, $settings, array $primaryData, array $inboundIds, array $clientData, string $uniqueUsername): array
     {
-        $numericIds = array_map('intval', $inboundIds);
-        $subEnabled = filter_var($settings->get('xui_subscription_enabled') ?? false, FILTER_VALIDATE_BOOLEAN);
+        $numericIds    = array_map('intval', $inboundIds);
+        $subEnabled    = filter_var($settings->get('xui_subscription_enabled') ?? false, FILTER_VALIDATE_BOOLEAN);
+        $subPort       = $settings->get('xui_subscription_port') ?: '2096';
+        $subPath       = rtrim($settings->get('xui_subscription_path') ?: '/sub', '/');
 
         $response = $xuiService->addClient($numericIds[0], array_merge($clientData, ['_all_inbound_ids' => $numericIds]));
 
@@ -233,58 +227,47 @@ trait CompletesOrder
         }
 
         $inboundId = isset($primaryData['id']) && is_numeric($primaryData['id']) ? (int) $primaryData['id'] : $numericIds[0];
-        $uuid      = $response['generated_uuid'] ?? null;
         $subId     = $response['generated_subId'] ?? null;
 
-        // ── حالت Subscription فعال ───────────────────────────────────────────
+        // ── حالت Subscription فعال ────────────────────────────────────────
         if ($subEnabled) {
-            $subInfo = $xuiService->getSubscriptionUrl($inboundId);
-
-            if ($subInfo && $subId) {
-                return [true, rtrim($subInfo['url'], '/') . '/' . $subId];
+            // subId از response
+            if ($subId) {
+                return [true, $this->buildSubUrl($settings, $subPort, $subPath, $subId)];
             }
 
-            // subId در response نیست — از clients بخوان
-            if ($subInfo) {
-                $clients = $xuiService->getClients($inboundId);
-                $client  = collect($clients)->firstWhere('email', $uniqueUsername);
-                $sid     = $client['subId'] ?? $client['id'] ?? null;
-                if ($sid) {
-                    return [true, rtrim($subInfo['url'], '/') . '/' . $sid];
-                }
+            // subId از getClients
+            $clients = $xuiService->getClients($inboundId);
+            $client  = collect($clients)->firstWhere('email', $clientData['email']);
+            $foundId = $client['subId'] ?? $client['id'] ?? null;
+
+            if ($foundId) {
+                return [true, $this->buildSubUrl($settings, $subPort, $subPath, $foundId)];
             }
 
-            // آدرس subscription را از تنظیمات admin بساز
-            $subPort = $settings->get('xui_subscription_port', '2096');
-            $subPath = rtrim($settings->get('xui_subscription_path', '/sub'), '/');
-            $host    = parse_url((string) $settings->get('xui_host', ''), PHP_URL_HOST) ?? '';
-            $scheme  = parse_url((string) $settings->get('xui_host', ''), PHP_URL_SCHEME) ?? 'https';
-            if ($host && $subId) {
-                return [true, "{$scheme}://{$host}:{$subPort}{$subPath}/{$subId}"];
-            }
+            // اگر هیچ subId نبود خطا بده تا ادمین بداند
+            throw new \Exception('Subscription فعال است ولی subId از پنل دریافت نشد. پنل را بررسی کنید.');
         }
 
-        // ── حالت کانفیگ مستقیم (Sub غیرفعال) ───────────────────────────────
-        if (! $uuid) {
-            throw new \Exception('UUID کلاینت از پنل دریافت نشد.');
-        }
+        // ── حالت کانفیگ مستقیم — همه inbound ها ─────────────────────────
+        $uuid       = $response['generated_uuid'];
+        $allConfigs = [];
 
-        $configs = [];
-        foreach ($numericIds as $ibId) {
+        foreach ($numericIds as $inboundId) {
             try {
-                $inbound   = $this->findInbound($ibId);
-                $configs[] = $this->buildVlessLink($uuid, $inbound->inbound_data, (string) $settings->get('xui_host', ''), $uniqueUsername);
+                $inboundModel = $this->findInbound($inboundId);
+                $allConfigs[] = $this->buildVlessLink($uuid, $inboundModel->inbound_data, $settings->get('xui_host', ''), $uniqueUsername);
             } catch (\Exception $e) {
-                Log::warning('CompletesOrder: skip inbound ' . $ibId, ['error' => $e->getMessage()]);
+                Log::warning("CompletesOrder: inbound {$inboundId} not found for direct config", ['error' => $e->getMessage()]);
             }
         }
 
-        if (empty($configs)) {
-            throw new \Exception('هیچ کانفیگی ساخته نشد.');
+        if (empty($allConfigs)) {
+            throw new \Exception('هیچ کانفیگ مستقیمی ساخته نشد.');
         }
 
-        // ۱ inbound → رشته ساده | چند inbound → JSON آرایه
-        return [true, count($configs) === 1 ? $configs[0] : json_encode($configs, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)];
+        // یک inbound → رشته تکی؛ چند inbound → JSON آرایه
+        return [true, count($allConfigs) === 1 ? $allConfigs[0] : json_encode($allConfigs)];
     }
 
     private function renewXUIClient($xuiService, $settings, array $primaryData, array $inboundIds, array $clientData, Order $order, string $uniqueUsername): array
@@ -296,11 +279,10 @@ trait CompletesOrder
 
         $originalConfig = $originalOrder->config_details;
         $primaryId      = (int) $inboundIds[0];
+        $subEnabled     = filter_var($settings->get('xui_subscription_enabled') ?? false, FILTER_VALIDATE_BOOLEAN);
 
-        // تشخیص نوع config قبلی
-        $decodedConfigs = json_decode($originalConfig, true);
-        $isMultiConfig  = is_array($decodedConfigs);
-        $isSubscription = ! $isMultiConfig && str_contains($originalConfig, '/sub/');
+        // تشخیص: آیا کانفیگ فعلی subscription است؟
+        $isSubscription = $subEnabled && str_contains($originalConfig, '/sub/');
 
         if ($isSubscription) {
             preg_match('/\/sub\/([a-zA-Z0-9]+)/', $originalConfig, $matches);
@@ -315,54 +297,61 @@ trait CompletesOrder
             if (! $clientId) {
                 $addResp = $xuiService->addClient($primaryId, $clientData);
                 if (! ($addResp['success'] ?? false)) throw new \Exception('خطا در تمدید سرویس.');
-                $subInfo = $xuiService->getSubscriptionUrl($primaryId);
-                return [true, rtrim($subInfo['url'] ?? '', '/') . '/' . $addResp['generated_subId']];
+                return [true, $originalConfig];
             }
 
-            $clientData['id'] = $clientId;
             $resp = $xuiService->updateClient($primaryId, $clientId, $clientData);
             if (! ($resp['success'] ?? false)) throw new \Exception('خطا در تمدید سرویس.');
             return [true, $originalConfig];
         }
 
-        // رشته VLESS یا JSON از چند VLESS — UUID را استخراج کن
-        $searchIn = $isMultiConfig ? ($decodedConfigs[0] ?? $originalConfig) : $originalConfig;
-        preg_match('/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/i', $searchIn, $matches);
+        // تمدید کانفیگ مستقیم (UUID)
+        preg_match('/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/i', $originalConfig, $matches);
         $clientId = $matches[1] ?? null;
-        if (! $clientId) throw new \Exception('UUID سرویس قبلی یافت نشد.');
+        if (! $clientId) throw new \Exception('اطلاعات سرویس قبلی نامعتبر است.');
 
         $clientData['id'] = $clientId;
-        $clients  = $xuiService->getClients($primaryId);
-        $client   = collect($clients)->firstWhere('id', $clientId) ?? collect($clients)->firstWhere('email', $uniqueUsername);
+        $clients = $xuiService->getClients($primaryId);
+        $client  = collect($clients)->firstWhere('id', $clientId) ?? collect($clients)->firstWhere('email', $uniqueUsername);
 
         if (! $client) {
-            // کلاینت وجود ندارد — بساز
             $addResp = $xuiService->addClient($primaryId, $clientData);
             if (! ($addResp['success'] ?? false)) throw new \Exception('خطا در تمدید سرویس.');
-            // config را مثل ساخت جدید برگردان
-            return $this->createXUIClient($xuiService, $settings, $primaryData, $inboundIds,
-                array_merge($clientData, ['id' => $addResp['generated_uuid'] ?? $clientId]), $uniqueUsername);
+        } else {
+            $resp = $xuiService->updateClient($primaryId, $clientId, $clientData);
+            if (! ($resp['success'] ?? false)) throw new \Exception('خطا در تمدید سرویس.');
         }
 
-        $resp = $xuiService->updateClient($primaryId, $clientId, $clientData);
-        if (! ($resp['success'] ?? false)) throw new \Exception('خطا در تمدید سرویس.');
-        return [true, $originalConfig]; // config تغییر نمی‌کند
+        return [true, $originalConfig];
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
+
+    /**
+     * ساخت subscription URL با فرمت: host:port/path/subId
+     */
+    private function buildSubUrl($settings, string $subPort, string $subPath, string $subId): string
+    {
+        $host   = rtrim($settings->get('xui_host', ''), '/');
+        $parsed = parse_url($host);
+        $scheme = $parsed['scheme'] ?? 'https';
+        $domain = $parsed['host'] ?? $host;
+
+        return "{$scheme}://{$domain}:{$subPort}{$subPath}/{$subId}";
+    }
 
     private function findInbound(int $panelInboundId): Inbound
     {
         $inbound = Inbound::query()->where('inbound_data->id', $panelInboundId)->first();
 
         if (! $inbound) {
-            $inbound = Inbound::all()->first(fn (Inbound $i) =>
+            $inbound = Inbound::all()->first(fn(Inbound $i) =>
                 is_array($i->inbound_data) && isset($i->inbound_data['id']) && (int) $i->inbound_data['id'] === $panelInboundId
             );
         }
 
         if (! $inbound) {
-            throw new \Exception("Inbound {$panelInboundId} یافت نشد. لطفاً سرور را Sync کنید.");
+            throw new \Exception("Inbound {$panelInboundId} در دیتابیس یافت نشد. لطفاً سرور را Sync کنید.");
         }
 
         return $inbound;
@@ -388,6 +377,6 @@ trait CompletesOrder
             'host'     => $streamSettings['wsSettings']['headers']['Host'] ?? null,
         ]));
 
-        return "vless://{$uuid}@{$serverIpOrDomain}:{$port}?{$params}#" . urlencode($remark . '|' . $inboundRemark);
+        return "vless://{$uuid}@{$serverIpOrDomain}:{$port}?{$params}#" . urlencode($remark . ($inboundRemark ? '|' . $inboundRemark : ''));
     }
 }
