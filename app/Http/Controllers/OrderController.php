@@ -361,19 +361,17 @@ class OrderController extends Controller
         array $clientData,
         string $uniqueUsername
     ): array {
-        // برای پنل ثنایی v3+ همه inbound ها را می‌فرستیم
-        // addClient در SanaeiXUIService از inboundIds پشتیبانی می‌کند
         $numericIds = array_map('intval', $inboundIds);
+        $subEnabled = filter_var($settings->get('xui_subscription_enabled') ?? false, FILTER_VALIDATE_BOOLEAN);
 
         $response = $xuiService->addClient($numericIds[0], array_merge($clientData, [
-            '_all_inbound_ids' => $numericIds,  // برای استفاده در SanaeiXUIService::addClientModern
+            '_all_inbound_ids' => $numericIds,
         ]));
 
         if (! ($response['success'] ?? false)) {
             throw new \Exception('خطا در ساخت اکانت در پنل.');
         }
 
-        // دریافت ID inbound از primaryData یا لیست inboundIds
         $inboundId = null;
         if (isset($primaryData['id']) && is_numeric($primaryData['id'])) {
             $inboundId = (int) $primaryData['id'];
@@ -381,32 +379,56 @@ class OrderController extends Controller
             $inboundId = $inboundIds[0];
         }
 
-        // تشخیص خودکار نوع لینک: سابسکریپشن یا تکی
-        $subInfo = $xuiService->getSubscriptionUrl($inboundId);
-        $subId   = $response['generated_subId'] ?? null;
+        $uuid  = $response['generated_uuid'] ?? null;
+        $subId = $response['generated_subId'] ?? null;
 
-        // subscription link — اولویت اصلی
-        if ($subInfo && $subId) {
-            return [true, rtrim($subInfo['url'], '/') . '/' . $subId];
+        // ── حالت Subscription فعال ──────────────────────────────
+        if ($subEnabled) {
+            $subInfo = $xuiService->getSubscriptionUrl($inboundId);
+
+            if ($subInfo && $subId) {
+                return [true, rtrim($subInfo['url'], '/') . '/' . $subId];
+            }
+
+            if ($subInfo) {
+                $clients = $xuiService->getClients($inboundId);
+                $client  = collect($clients)->firstWhere('email', $uniqueUsername);
+                $sid     = $client['subId'] ?? $client['id'] ?? null;
+                if ($sid) {
+                    return [true, rtrim($subInfo['url'], '/') . '/' . $sid];
+                }
+            }
+
+            // آدرس Sub را از تنظیمات admin بساز
+            $subPort = $settings->get('xui_subscription_port', '2096');
+            $subPath = rtrim($settings->get('xui_subscription_path', '/sub'), '/');
+            $host    = parse_url((string) $settings->get('xui_host', ''), PHP_URL_HOST) ?? '';
+            $scheme  = parse_url((string) $settings->get('xui_host', ''), PHP_URL_SCHEME) ?? 'https';
+            if ($host && $subId) {
+                return [true, "{$scheme}://{$host}:{$subPort}{$subPath}/{$subId}"];
+            }
         }
 
-        // پنل sub دارد ولی subId در response نیست — از clients بخوان
-        if ($subInfo) {
-            $clients = $xuiService->getClients($inboundId);
-            $client  = collect($clients)->firstWhere('email', $uniqueUsername);
-            if ($client && ! empty($client['subId'])) {
-                return [true, rtrim($subInfo['url'], '/') . '/' . $client['subId']];
-            }
-            if ($client && ! empty($client['id'])) {
-                return [true, rtrim($subInfo['url'], '/') . '/' . $client['id']];
+        // ── کانفیگ مستقیم (Sub غیرفعال) ──────────────────────
+        if (! $uuid) {
+            throw new \Exception('UUID کلاینت از پنل دریافت نشد.');
+        }
+
+        $configs = [];
+        foreach ($numericIds as $ibId) {
+            try {
+                $inbound   = $this->findInbound($ibId);
+                $configs[] = $this->buildVlessLink($uuid, $inbound->inbound_data, $settings->get('xui_host', ''), $uniqueUsername);
+            } catch (\Exception $e) {
+                Log::warning('createXUIClient: skip inbound ' . $ibId, ['error' => $e->getMessage()]);
             }
         }
 
-        // Fallback فقط وقتی پنل subscription ندارد
-        $uuid   = $response['generated_uuid'];
-        $config = $this->buildVlessLink($uuid, $primaryData, $settings->get('xui_host', ''), $uniqueUsername);
+        if (empty($configs)) {
+            throw new \Exception('هیچ کانفیگی ساخته نشد.');
+        }
 
-        return [true, $config];
+        return [true, count($configs) === 1 ? $configs[0] : json_encode($configs, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)];
     }
 
     /**

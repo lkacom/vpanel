@@ -169,65 +169,83 @@
                                             </div>
                                         </div>
                                         <div x-show="open" x-transition x-cloak class="mt-4 pt-4 border-t dark:border-gray-700">
-                                            <h4 class="font-bold mb-2 text-gray-900 dark:text-white text-right">اطلاعات سرویس:</h4>
+                                            <h4 class="font-bold mb-3 text-gray-900 dark:text-white text-right">اطلاعات سرویس:</h4>
                                             @php
-                                                $config = $order->config_details;
-                                                $isSubscription = str_contains($config, '/sub/');
+                                                $config         = $order->config_details;
+                                                $isSubscription = $config && str_contains($config, '/sub/');
+                                                $multiConfigs   = null;
+                                                if ($config && ! $isSubscription) {
+                                                    $decoded = json_decode($config, true);
+                                                    if (is_array($decoded)) $multiConfigs = $decoded;
+                                                }
                                             @endphp
 
                                             @if($isSubscription)
-                                                {{-- نمایش لینک سابسکریپشن --}}
+                                                {{-- لینک Subscription --}}
                                                 <div class="p-4 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-700">
-                                                    <div class="flex items-center gap-2 mb-3">
-                                                        <span class="text-blue-600 dark:text-blue-400 text-lg">🔗</span>
-                                                        <span class="font-bold text-blue-800 dark:text-blue-300">لینک سابسکریپشن</span>
+                                                    <div class="flex items-center gap-2 mb-2">
+                                                        <span class="text-blue-600 dark:text-blue-400">🔗</span>
+                                                        <span class="font-bold text-blue-800 dark:text-blue-300">لینک Subscription</span>
                                                     </div>
-                                                    <p class="text-sm text-blue-700 dark:text-blue-300 mb-3 text-right">
-                                                        این لینک شامل تمام سرورها و کانفیگ‌ها است. با این لینک می‌توانید در تمام برنامه‌ها اتصال پیدا کنید.
-                                                    </p>
-                                                    <div class="p-3 bg-white dark:bg-gray-800 rounded-lg relative" x-data="{copied: false, copyToClipboard(text) { navigator.clipboard.writeText(text); this.copied = true; setTimeout(() => { this.copied = false }, 2000); }}">
-                                                        <pre class="text-left text-sm text-gray-800 dark:text-gray-300 whitespace-pre-wrap overflow-x-auto break-all" dir="ltr">{{ $config }}</pre>
-                                                        <div class="absolute top-2 right-2 flex gap-2">
-                                                            <button @click="copyToClipboard(`{{ $config }}`)" class="px-2 py-1 text-xs bg-gray-300 dark:bg-gray-700 rounded hover:bg-gray-400 transition-colors flex items-center gap-1">
+                                                    <p class="text-xs text-blue-600 dark:text-blue-400 mb-3">این لینک شامل تمام سرورهاست. در برنامه‌های V2RayNG، Hiddify یا Streisand آن را به عنوان Subscription اضافه کنید.</p>
+                                                    <div class="p-3 bg-white dark:bg-gray-800 rounded-lg relative" x-data="{copied: false}">
+                                                        <pre class="text-left text-xs text-gray-800 dark:text-gray-300 overflow-x-auto break-all pr-20" dir="ltr">{{ $config }}</pre>
+                                                        <div class="absolute top-2 left-2 flex gap-1">
+                                                            <button @click="navigator.clipboard.writeText('{{ addslashes($config) }}'); copied = true; setTimeout(() => copied = false, 2000)"
+                                                                    class="px-2 py-1 text-xs bg-gray-200 dark:bg-gray-700 rounded hover:bg-gray-300 flex items-center gap-1">
                                                                 <span x-show="!copied">📋 کپی</span>
-                                                                <span x-show="copied" class="text-green-600 font-bold">✓ کپی شد!</span>
+                                                                <span x-show="copied" class="text-green-600 font-bold">✓ کپی شد</span>
                                                             </button>
-                                                            <button @click="$store.qrModal.open('{{ $config }}', '{{ $order->plan->name }}')" class="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors flex items-center gap-1">
-                                                                📱 QR Code
-                                                            </button>
+                                                            <button @click="$store.qrModal.open('{{ addslashes($config) }}', '{{ $order->plan->name }}')" class="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600">📱 QR</button>
                                                         </div>
                                                     </div>
-                                                    <div class="mt-3 text-sm text-gray-600 dark:text-gray-400 text-right">
-                                                        <p class="font-bold mb-1">راهنمای اتصال:</p>
-                                                        <ul class="list-disc list-inside space-y-1">
-                                                            <li>در برنامه <strong>V2RayNG</strong> یا <strong>Streisand</strong> یا <strong>Hiddify</strong> گزینه اضافه کردن اشتراک (Subscription) را بزنید</li>
-                                                            <li>لینک بالا را کپی و در قسمت URL اضافه کنید</li>
-                                                            <li>پس از اتصال، لیست سرورها نمایش داده می‌شود</li>
-                                                        </ul>
-                                                    </div>
                                                 </div>
-                                            @else
-                                                {{-- نمایش کانفیگ تکی --}}
-                                                <div class="p-3 bg-gray-100 dark:bg-gray-900 rounded-lg relative" x-data="{copied: false, copyToClipboard(text) { navigator.clipboard.writeText(text); this.copied = true; setTimeout(() => { this.copied = false }, 2000); }}">
-                                                    <pre class="text-left text-sm text-gray-800 dark:text-gray-300 whitespace-pre-wrap overflow-x-auto" dir="ltr" style="padding-top: 2.5rem;">{{ $config }}</pre>
-                                                    <div class="absolute top-2 right-2 flex gap-2">
-                                                        <button @click="copyToClipboard(`{{ $config }}`)" class="px-2 py-1 text-xs bg-gray-300 dark:bg-gray-700 rounded hover:bg-gray-400 transition-colors flex items-center gap-1">
-                                                            <span x-show="!copied">📋 کپی</span>
-                                                            <span x-show="copied" class="text-green-600 font-bold">✓ کپی شد!</span>
-                                                        </button>
-                                                        <button @click="$store.qrModal.open('{{ $config }}', '{{ $order->plan->name }}')" class="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors flex items-center gap-1">
-                                                            📱 QR Code
-                                                        </button>
-                                                    </div>
+
+                                            @elseif($multiConfigs)
+                                                {{-- چند کانفیگ مستقیم --}}
+                                                <p class="text-sm text-gray-600 dark:text-gray-400 mb-3 text-right">سرویس شما دارای <strong class="text-indigo-500">{{ count($multiConfigs) }} سرور</strong> است. هر لینک را جداگانه اضافه کنید:</p>
+                                                <div class="space-y-2">
+                                                    @foreach($multiConfigs as $idx => $singleConfig)
+                                                        <div class="p-3 bg-gray-100 dark:bg-gray-900 rounded-lg"
+                                                             x-data="{ copied_{{ $idx }}: false }">
+                                                            <div class="flex items-center justify-between mb-1">
+                                                                <span class="text-xs font-bold text-gray-500 dark:text-gray-400">سرور {{ $idx + 1 }}</span>
+                                                                <div class="flex gap-1">
+                                                                    <button @click="navigator.clipboard.writeText('{{ addslashes($singleConfig) }}'); copied_{{ $idx }} = true; setTimeout(() => copied_{{ $idx }} = false, 2000)"
+                                                                            class="px-2 py-0.5 text-xs bg-gray-300 dark:bg-gray-700 rounded hover:bg-gray-400 flex items-center gap-1">
+                                                                        <span x-show="!copied_{{ $idx }}">📋 کپی</span>
+                                                                        <span x-show="copied_{{ $idx }}" class="text-green-600 font-bold">✓ کپی شد</span>
+                                                                    </button>
+                                                                    <button @click="$store.qrModal.open('{{ addslashes($singleConfig) }}', '{{ $order->plan->name }} - سرور {{ $idx + 1 }}')"
+                                                                            class="px-2 py-0.5 text-xs bg-blue-500 text-white rounded hover:bg-blue-600">📱 QR</button>
+                                                                </div>
+                                                            </div>
+                                                            <pre class="text-left text-xs text-gray-700 dark:text-gray-300 overflow-x-auto break-all" dir="ltr">{{ $singleConfig }}</pre>
+                                                        </div>
+                                                    @endforeach
                                                 </div>
-                                                <div class="mt-3 text-sm text-gray-600 dark:text-gray-400 text-right">
-                                                    <p class="font-bold mb-1">راهنمای اتصال:</p>
-                                                    <ul class="list-disc list-inside space-y-1">
-                                                        <li>در برنامه <strong>V2RayNG</strong> یا <strong>Streisand</strong> یا <strong>Hiddify</strong> گزینه اضافه کردن کانفیگ را بزنید</li>
-                                                        <li>لینک بالا را کپی یا QR Code را اسکن کنید</li>
-                                                    </ul>
+                                                <p class="mt-2 text-xs text-gray-500 dark:text-gray-400 text-right">💡 همه سرورها را اضافه کنید و بهترین سرور انتخاب شود.</p>
+
+                                            @elseif($config)
+                                                {{-- یک کانفیگ مستقیم --}}
+                                                <div class="p-3 bg-gray-100 dark:bg-gray-900 rounded-lg"
+                                                     x-data="{copied: false}">
+                                                    <div class="flex items-center justify-between mb-1">
+                                                        <span class="text-xs font-bold text-gray-500">کانفیگ</span>
+                                                        <div class="flex gap-1">
+                                                            <button @click="navigator.clipboard.writeText('{{ addslashes($config) }}'); copied = true; setTimeout(() => copied = false, 2000)"
+                                                                    class="px-2 py-0.5 text-xs bg-gray-300 dark:bg-gray-700 rounded hover:bg-gray-400 flex items-center gap-1">
+                                                                <span x-show="!copied">📋 کپی</span>
+                                                                <span x-show="copied" class="text-green-600 font-bold">✓ کپی شد</span>
+                                                            </button>
+                                                            <button @click="$store.qrModal.open('{{ addslashes($config) }}', '{{ $order->plan->name }}')"
+                                                                    class="px-2 py-0.5 text-xs bg-blue-500 text-white rounded hover:bg-blue-600">📱 QR Code</button>
+                                                        </div>
+                                                    </div>
+                                                    <pre class="text-left text-xs text-gray-800 dark:text-gray-300 overflow-x-auto break-all" dir="ltr">{{ $config }}</pre>
                                                 </div>
                                             @endif
+
                                         </div>
                                     </div>
                                 @endforeach

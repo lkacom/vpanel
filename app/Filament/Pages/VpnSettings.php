@@ -118,7 +118,7 @@ class VpnSettings extends Page implements HasForms
             TextInput::make('xui_pass')->label('رمز عبور')->password()->required($required),
             \Filament\Forms\Components\Toggle::make('xui_subscription_enabled')
                 ->label('فعال‌سازی Subscription')
-                ->helperText('در صورت فعال بودن، کاربر لینک sub دریافت می‌کند. در غیر این صورت، کانفیگ مستقیم (vless://) تحویل می‌شود.')
+                ->helperText('اگر از فعال بودن subscription در پنل خود اطمینان دارید با فعال کردن این گزینه، کاربر لینک sub دریافت می‌کند.')
                 ->onColor('success')
                 ->offColor('gray')
                 ->live()
