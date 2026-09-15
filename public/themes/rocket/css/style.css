@@ -175,6 +175,11 @@ section {
     box-shadow: none;
 }
 
+/* رنگ سفید برای پاسخ‌های FAQ */
+.accordion-body {
+    color: var(--white);
+}
+
 /* ==== Footer ==== */
 .footer {
     background: rgba(10, 10, 20, 0.9);

@@ -13,9 +13,17 @@ class AuthenticatedSessionController extends Controller
 {
     /**
      * Display the login view.
+     * اگر قالب اصلی غیرفعال است (welcome)، صفحه ورود کاربر در / نمایش داده می‌شود.
+     * برای جلوگیری از نمایش فرم Breeze نیمه‌فارسی، /login را به / ریدایرکت می‌کنیم.
      */
-    public function create(): View
+    public function create(): View|RedirectResponse
     {
+        $activeTheme = \App\Models\Setting::where('key', 'active_theme')->value('value') ?? 'rocket';
+
+        if ($activeTheme === 'welcome') {
+            return redirect('/');
+        }
+
         return view('auth.login');
     }
 

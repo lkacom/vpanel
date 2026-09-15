@@ -2,15 +2,14 @@
 
 namespace App\Filament\Pages;
 
-use App\Models\Inbound;
 use App\Models\Setting;
 use Filament\Forms\Components\FileUpload;
-use Filament\Forms\Components\Radio;
 use Filament\Schemas\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Schemas\Components\Tabs;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Schemas\Schema;
@@ -18,7 +17,7 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class ThemeSettings extends Page implements HasForms
 {
@@ -30,23 +29,25 @@ class ThemeSettings extends Page implements HasForms
     protected static ?string $title = 'تنظیمات قالب و محتوای سایت';
     protected static string|\UnitEnum|null $navigationGroup = 'تنظیمات';
 
-
     public ?array $data = [];
 
     public function mount(): void
     {
         $settings = Setting::all()->pluck('value', 'key')->toArray();
 
+        // تبدیل مقدار active_theme به boolean برای toggle
+        $settings['main_theme_enabled'] = ($settings['active_theme'] ?? 'rocket') === 'rocket';
+
+        // لوگو ذخیره‌شده — FileUpload انتظار array دارد
+        if (!empty($settings['site_logo'])) {
+            $settings['site_logo'] = [$settings['site_logo']];
+        } else {
+            $settings['site_logo'] = [];
+        }
 
         $this->form->fill(array_merge([
-            'panel_type' => 'marzban',
-            'xui_host' => null,
-            'xui_user' => null,
-            'xui_pass' => null,
-            'xui_default_inbound_id' => null,
-            'marzban_host' => null,
-            'marzban_sudo_username' => null,
-            'marzban_sudo_password' => null,
+            'main_theme_enabled' => true,
+            'site_logo'          => [],
         ], $settings));
     }
 
@@ -58,23 +59,42 @@ class ThemeSettings extends Page implements HasForms
                 ->persistTab()
                 ->extraAttributes(['class' => 'max-w-max'])
                 ->tabs([
+
+                    // ──────────────────────────────────────────
+                    //  تب ۱: تنظیمات قالب
+                    // ──────────────────────────────────────────
                     Tabs\Tab::make('تنظیمات قالب')
                         ->icon('heroicon-o-swatch')
                         ->schema([
-                            Select::make('active_theme')->label('قالب اصلی سایت')->options([
-                                'welcome' => 'غیرفعال',
-                                'rocket' => 'قالب RoketVPN (موشکی)',
-                            ])->default('welcome')->live(),
-                            Select::make('active_auth_theme')->label('قالب صفحات ورود/ثبت‌نام')->options([
-                                'default' => 'قالب پیش‌فرض (Breeze)',
-                                'cyberpunk' => 'قالب سایبرپانک',
-                                'rocket' => 'قالب RoketVPN (موشکی)',
-                            ])->default('cyberpunk')->live(),
+                            Section::make('تنظیمات عمومی نمایش')
+                                ->schema([
+                                    Toggle::make('main_theme_enabled')
+                                        ->label('قالب اصلی سایت (RocketVPN)')
+                                        ->helperText('غیرفعال = فقط صفحه ورود کاربران نمایش داده می‌شود.')
+                                        ->onColor('success')
+                                        ->offColor('gray')
+                                        ->live(),
+
+                                    FileUpload::make('site_logo')
+                                        ->label('لوگوی سایت (صفحه ورود کاربران)')
+                                        ->helperText('در صورت عدم آپلود، لوگوی پیش‌فرض (/images/logo.png) استفاده می‌شود.')
+                                        ->image()
+                                        ->imagePreviewHeight('80')
+                                        ->maxSize(1024)
+                                        ->disk('public')
+                                        ->directory('logos')
+                                        ->visibility('public')
+                                        ->acceptedFileTypes(['image/png', 'image/jpeg', 'image/svg+xml', 'image/webp'])
+                                        ->columnSpanFull(),
+                                ]),
                         ]),
 
+                    // ──────────────────────────────────────────
+                    //  تب ۲: محتوای قالب RoketVPN
+                    // ──────────────────────────────────────────
                     Tabs\Tab::make('محتوای قالب RoketVPN (موشکی)')
                         ->icon('heroicon-o-rocket-launch')
-                        ->visible(fn(Get $get) => $get('active_theme') === 'rocket')
+                        ->visible(fn(Get $get) => (bool) $get('main_theme_enabled'))
                         ->schema([
                             Section::make('عمومی')->schema([
                                 TextInput::make('rocket_navbar_brand')->label('نام برند در Navbar'),
@@ -101,108 +121,60 @@ class ThemeSettings extends Page implements HasForms
                             ])->columns(2),
                         ]),
 
-                    Tabs\Tab::make('محتوای قالب سایبرپانک')->icon('heroicon-o-bolt')->visible(fn(Get $get) => $get('active_theme') === 'cyberpunk')->schema([
-                        Section::make('عمومی')->schema([
-                            TextInput::make('cyberpunk_navbar_brand')->label('نام برند در Navbar')->placeholder('VPN Market'),
-                            TextInput::make('cyberpunk_footer_text')->label('متن فوتر')->placeholder('© 2025 Quantum Network. اتصال برقرار شد.'),
-                        ])->columns(2),
-                        Section::make('بخش اصلی (Hero Section)')->schema([
-                            TextInput::make('cyberpunk_hero_title')->label('تیتر اصلی')->placeholder('واقعیت را هک کن'),
-                            Textarea::make('cyberpunk_hero_subtitle')->label('زیرتیتر')->rows(3),
-                            TextInput::make('cyberpunk_hero_button_text')->label('متن دکمه اصلی')->placeholder('دریافت دسترسی'),
-                        ]),
-                        Section::make('بخش ویژگی‌ها (Features)')->schema([
-                            TextInput::make('cyberpunk_features_title')->label('عنوان بخش')->placeholder('سیستم‌عامل آزادی دیجیتال شما'),
-                            TextInput::make('cyberpunk_feature1_title')->label('عنوان ویژگی ۱')->placeholder('پروتکل Warp'),
-                            Textarea::make('cyberpunk_feature1_desc')->label('توضیح ویژگی ۱')->rows(2),
-                            TextInput::make('cyberpunk_feature2_title')->label('عنوان ویژگی ۲')->placeholder('حالت Ghost'),
-                            Textarea::make('cyberpunk_feature2_desc')->label('توضیح ویژگی ۲')->rows(2),
-                            TextInput::make('cyberpunk_feature3_title')->label('عنوان ویژگی ۳')->placeholder('اتصال پایدار'),
-                            Textarea::make('cyberpunk_feature3_desc')->label('توضیح ویژگی ۳')->rows(2),
-                            TextInput::make('cyberpunk_feature4_title')->label('عنوان ویژگی ۴')->placeholder('پشتیبانی Elite'),
-                            Textarea::make('cyberpunk_feature4_desc')->label('توضیح ویژگی ۴')->rows(2),
-                        ])->columns(2),
-                        Section::make('بخش قیمت‌گذاری (Pricing)')->schema([
-                            TextInput::make('cyberpunk_pricing_title')->label('عنوان بخش')->placeholder('انتخاب پلن اتصال'),
-                        ]),
-                        Section::make('بخش سوالات متداول (FAQ)')->schema([
-                            TextInput::make('cyberpunk_faq_title')->label('عنوان بخش')->placeholder('اطلاعات طبقه‌بندی شده'),
-                            TextInput::make('cyberpunk_faq1_q')->label('سوال اول')->placeholder('آیا اطلاعات کاربران ذخیره می‌شود؟'),
-                            Textarea::make('cyberpunk_faq1_a')->label('پاسخ اول')->rows(2),
-                            TextInput::make('cyberpunk_faq2_q')->label('سوال دوم')->placeholder('چگونه می‌توانم سرویس را روی چند دستگاه استفاده کنم؟'),
-                            Textarea::make('cyberpunk_faq2_a')->label('پاسخ دوم')->rows(2),
-                        ]),
-                    ]),
+                    // ──────────────────────────────────────────
+                    //  تب ۳: تنظیمات پرداخت
+                    // ──────────────────────────────────────────
+                    Tabs\Tab::make('تنظیمات پرداخت')
+                        ->icon('heroicon-o-credit-card')
+                        ->schema([
+                            Section::make('پرداخت کارت به کارت')->schema([
+                                TextInput::make('payment_card_number')
+                                    ->label('شماره کارت')
+                                    ->mask('9999-9999-9999-9999')
+                                    ->placeholder('XXXX-XXXX-XXXX-XXXX')
+                                    ->helperText('شماره کارت ۱۶ رقمی خود را وارد کنید.')
+                                    ->numeric(false)
+                                    ->validationAttribute('شماره کارت'),
+                                TextInput::make('payment_card_holder_name')->label('نام صاحب حساب'),
+                                Textarea::make('payment_card_instructions')->label('توضیحات اضافی')->rows(3),
+                            ]),
 
-                    Tabs\Tab::make('محتوای صفحات ورود')->icon('heroicon-o-key')->schema([
-                        Section::make('متن‌های عمومی')->schema([TextInput::make('auth_brand_name')->label('نام برند')->placeholder('Vpanel'),]),
-                        Section::make('صفحه ورود (Login)')->schema([
-                            TextInput::make('auth_login_title')->label('عنوان فرم ورود'),
-                            TextInput::make('auth_login_email_placeholder')->label('متن داخل فیلد ایمیل'),
-                            TextInput::make('auth_login_password_placeholder')->label('متن داخل فیلد رمز عبور'),
-                            TextInput::make('auth_login_remember_me_label')->label('متن "مرا به خاطر بسپار"'),
-                            TextInput::make('auth_login_forgot_password_link')->label('متن لینک "فراموشی رمز"'),
-                            TextInput::make('auth_login_submit_button')->label('متن دکمه ورود'),
-                            TextInput::make('auth_login_register_link')->label('متن لینک ثبت‌نام'),
-                        ])->columns(2),
-                        Section::make('صفحه ثبت‌نام (Register)')->schema([
-                            TextInput::make('auth_register_title')->label('عنوان فرم ثبت‌نام'),
-                            TextInput::make('auth_register_name_placeholder')->label('متن داخل فیلد نام'),
-                            TextInput::make('auth_register_password_confirm_placeholder')->label('متن داخل فیلد تکرار رمز'),
-                            TextInput::make('auth_register_submit_button')->label('متن دکمه ثبت‌نام'),
-                            TextInput::make('auth_register_login_link')->label('متن لینک ورود'),
-                        ])->columns(2),
-                    ]),
-
-
-                    Tabs\Tab::make('تنظیمات پرداخت')->icon('heroicon-o-credit-card')->schema([
-                        Section::make('پرداخت کارت به کارت')->schema([
-                            TextInput::make('payment_card_number')
-                                ->label('شماره کارت')
-                                ->mask('9999-9999-9999-9999')
-                                ->placeholder('XXXX-XXXX-XXXX-XXXX')
-                                ->helperText('شماره کارت ۱۶ رقمی خود را وارد کنید.')
-                                ->numeric(false)
-                                ->validationAttribute('شماره کارت'),
-                            TextInput::make('payment_card_holder_name')->label('نام صاحب حساب'),
-                            Textarea::make('payment_card_instructions')->label('توضیحات اضافی')->rows(3),
+                            Section::make('درگاه زرین‌پال')
+                                ->description('تنظیمات اتصال به درگاه پرداخت زرین‌پال')
+                                ->schema([
+                                    Toggle::make('zarinpal_active')
+                                        ->label('فعال‌سازی درگاه زرین‌پال')
+                                        ->helperText('درگاه را برای کاربران نمایش دهید یا مخفی کنید.')
+                                        ->onColor('success')
+                                        ->offColor('gray')
+                                        ->columnSpanFull(),
+                                    TextInput::make('zarinpal_merchant_id')
+                                        ->label('کد پذیرنده (Merchant ID)')
+                                        ->placeholder('xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx')
+                                        ->helperText('از پنل زرین‌پال → درگاه‌ها → کد پذیرنده دریافت کنید.')
+                                        ->maxLength(36)
+                                        ->columnSpanFull(),
+                                    Select::make('zarinpal_currency')
+                                        ->label('واحد پول')
+                                        ->options(['IRT' => 'تومان (IRT)', 'IRR' => 'ریال (IRR)'])
+                                        ->default('IRT'),
+                                    TextInput::make('zarinpal_gateway_name')
+                                        ->label('نام نمایشی درگاه')
+                                        ->placeholder('پرداخت آنلاین — زرین‌پال')
+                                        ->helperText('این نام در دکمه انتخاب روش پرداخت به کاربر نمایش داده می‌شود.')
+                                        ->maxLength(100),
+                                    Toggle::make('zarinpal_sandbox')
+                                        ->label('حالت آزمایشی (Sandbox)')
+                                        ->helperText('فعال کنید تا پول واقعی کسر نشود — فقط برای تست.')
+                                        ->onColor('warning')
+                                        ->offColor('gray'),
+                                ])
+                                ->columns(2),
                         ]),
 
-                        Section::make('درگاه زرین‌پال')
-                            ->description('تنظیمات اتصال به درگاه پرداخت زرین‌پال')
-                            ->schema([
-                                \Filament\Forms\Components\Toggle::make('zarinpal_active')
-                                    ->label('فعال‌سازی درگاه زرین‌پال')
-                                    ->helperText('درگاه را برای کاربران نمایش دهید یا مخفی کنید.')
-                                    ->onColor('success')
-                                    ->offColor('gray')
-                                    ->columnSpanFull(),
-                                TextInput::make('zarinpal_merchant_id')
-                                    ->label('کد پذیرنده (Merchant ID)')
-                                    ->placeholder('xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx')
-                                    ->helperText('از پنل زرین‌پال → درگاه‌ها → کد پذیرنده دریافت کنید.')
-                                    ->maxLength(36)
-                                    ->columnSpanFull(),
-                                Select::make('zarinpal_currency')
-                                    ->label('واحد پول')
-                                    ->options(['IRT' => 'تومان (IRT)', 'IRR' => 'ریال (IRR)'])
-                                    ->default('IRT'),
-                                TextInput::make('zarinpal_gateway_name')
-                                    ->label('نام نمایشی درگاه')
-                                    ->placeholder('پرداخت آنلاین — زرین‌پال')
-                                    ->helperText('این نام در دکمه انتخاب روش پرداخت به کاربر نمایش داده می‌شود.')
-                                    ->maxLength(100),
-                                \Filament\Forms\Components\Toggle::make('zarinpal_sandbox')
-                                    ->label('حالت آزمایشی (Sandbox)')
-                                    ->helperText('فعال کنید تا پول واقعی کسر نشود — فقط برای تست.')
-                                    ->onColor('warning')
-                                    ->offColor('gray'),
-                            ])
-                            ->columns(2),
-                    ]),
-
-
-
+                    // ──────────────────────────────────────────
+                    //  تب ۴: سیستم دعوت از دوستان
+                    // ──────────────────────────────────────────
                     Tabs\Tab::make('سیستم دعوت از دوستان')
                         ->icon('heroicon-o-gift')
                         ->schema([
@@ -231,6 +203,23 @@ class ThemeSettings extends Page implements HasForms
         $this->form->validate();
         $formData = $this->form->getState();
 
+        // ── active_theme از toggle ──────────────────────────
+        $mainThemeEnabled = $formData['main_theme_enabled'] ?? true;
+        $formData['active_theme'] = $mainThemeEnabled ? 'rocket' : 'welcome';
+        unset($formData['main_theme_enabled']);
+
+        // ── پردازش لوگو ────────────────────────────────────
+        // FileUpload مقدار را به صورت array برمی‌گرداند
+        $logoArray = $formData['site_logo'] ?? [];
+        if (is_array($logoArray) && count($logoArray) > 0) {
+            // مسیر نسبی فایل در disk public
+            $formData['site_logo'] = array_values($logoArray)[0];
+        } else {
+            // اگر خالی است، کلید را حذف کن تا لوگوی قبلی پاک نشود
+            unset($formData['site_logo']);
+        }
+
+        // ── ذخیره همه تنظیمات ──────────────────────────────
         foreach ($formData as $key => $value) {
             Setting::updateOrCreate(['key' => $key], ['value' => $value ?? '']);
         }

@@ -1,76 +1,53 @@
-@php
-    use App\Models\Setting;
+<x-guest-layout>
+    <form method="POST" action="{{ route('register') }}">
+        @csrf
 
-    $settings = Setting::all()->pluck('value', 'key');
-    $activeAuthTheme = $settings->get('active_auth_theme', 'default');
-@endphp
+        @if(request()->has('ref'))
+            <input type="hidden" name="ref" value="{{ request()->query('ref') }}">
+        @endif
 
-    <!DOCTYPE html>
-<html lang="fa" dir="rtl">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
+        <!-- Name -->
+        <div>
+            <x-input-label for="name" :value="__('Name')" />
+            <x-text-input id="name" class="block mt-1 w-full" type="text" name="name" :value="old('name')" required autofocus autocomplete="name" />
+            <x-input-error :messages="$errors->get('name')" class="mt-2" />
+        </div>
 
-    <title>{{ config('app.name', 'Laravel') }} - ثبت نام</title>
+        <!-- Email Address -->
+        <div class="mt-4">
+            <x-input-label for="email" :value="__('Email')" />
+            <x-text-input id="email" class="block mt-1 w-full" type="email" name="email" :value="old('email')" required autocomplete="username" />
+            <x-input-error :messages="$errors->get('email')" class="mt-2" />
+        </div>
 
-    <link rel="stylesheet" href="{{ asset('themes/auth/' . $activeAuthTheme . '/css/style.css') }}">
-</head>
-<body class="{{ $activeAuthTheme }}-auth-body">
+        <!-- Password -->
+        <div class="mt-4">
+            <x-input-label for="password" :value="__('Password')" />
+            <x-text-input id="password" class="block mt-1 w-full"
+                            type="password"
+                            name="password"
+                            required autocomplete="new-password" />
+            <x-input-error :messages="$errors->get('password')" class="mt-2" />
+        </div>
 
-<div class="auth-container">
-    <div class="embers-container">
-        @for ($i = 0; $i < 20; $i++)
-            <div class="ember"></div>
-        @endfor
-    </div>
+        <!-- Confirm Password -->
+        <div class="mt-4">
+            <x-input-label for="password_confirmation" :value="__('Confirm Password')" />
+            <x-text-input id="password_confirmation" class="block mt-1 w-full"
+                            type="password"
+                            name="password_confirmation"
+                            required autocomplete="new-password" />
+            <x-input-error :messages="$errors->get('password_confirmation')" class="mt-2" />
+        </div>
 
-    <div class="auth-card">
-        <div class="auth-logo">{{ $settings->get('auth_brand_name', 'VPNMarket') }}</div>
-        <h2 class="auth-title">ایجاد حساب کاربری جدید</h2>
+        <div class="flex items-center justify-end mt-4">
+            <a class="underline text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800" href="{{ route('login') }}">
+                {{ __('Already registered?') }}
+            </a>
 
-        <form method="POST" action="{{ route('register') }}">
-            @csrf
-
-            @if(request()->has('ref'))
-                <input type="hidden" name="ref" value="{{ request()->query('ref') }}">
-            @endif
-
-            <div class="input-group">
-                <input id="name" class="input-field" type="text" name="name" value="{{ old('name') }}" required autofocus placeholder="نام کامل">
-            </div>
-
-            <div class="input-group">
-                <input id="email" class="input-field" type="email" name="email" value="{{ old('email') }}" required placeholder="ایمیل">
-            </div>
-
-            <div class="input-group">
-                <input id="password" class="input-field" type="password" name="password" required placeholder="رمز عبور">
-            </div>
-
-            <div class="input-group">
-                <input id="password_confirmation" class="input-field" type="password" name="password_confirmation" required placeholder="تکرار رمز عبور">
-            </div>
-
-            @if($errors->any())
-                <div class="mt-2 text-danger small" style="color: #ff7675; font-size: 0.8rem;">
-                    @foreach ($errors->all() as $error)
-                        <p>{{ $error }}</p>
-                    @endforeach
-                </div>
-            @endif
-
-            <div class="input-group mt-4">
-                <button type="submit" class="btn-submit">ثبت نام</button>
-            </div>
-
-            <hr class="separator">
-
-            <div class="register-link">
-                قبلاً ثبت‌نام کرده‌اید؟ <a class="auth-link" href="{{ route('login') }}">وارد شوید</a>
-            </div>
-        </form>
-    </div>
-</div>
-</body>
-</html>
+            <x-primary-button class="ms-4">
+                {{ __('Register') }}
+            </x-primary-button>
+        </div>
+    </form>
+</x-guest-layout>

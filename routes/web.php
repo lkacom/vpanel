@@ -19,7 +19,13 @@ use App\Http\Controllers\ZarinpalController;
 
 Route::get('/', function () {
     $settings = Setting::all()->pluck('value', 'key');
-//    $plans = Plan::where('is_active', true)->orderBy('price')->get();
+    $activeTheme = $settings->get('active_theme', 'welcome');
+
+    // اگر قالب غیرفعال است (welcome) و کاربر لاگین است، به داشبورد برو
+    if ($activeTheme === 'welcome' && Auth::check()) {
+        return redirect()->route('dashboard');
+    }
+
     $plans = Plan::where('is_active', true)
         ->orderByRaw("
             CASE duration_days
@@ -31,8 +37,6 @@ Route::get('/', function () {
             END
         ")
         ->get();
-
-    $activeTheme = $settings->get('active_theme', 'welcome');
 
     if (!view()->exists("themes.{$activeTheme}")) {
         abort(404, "قالب '{$activeTheme}' یافت نشد.");
