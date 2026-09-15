@@ -147,34 +147,20 @@ trait CompletesOrder
 
         $subEnabled = filter_var($settings->get('xui_subscription_enabled') ?? false, FILTER_VALIDATE_BOOLEAN);
 
-        if ($subEnabled && isset($response['subscription_url'])) {
-            // ── subscription link ──────────────────────────────────────────
+        if (isset($response['subscription_url'])) {
+            // مرزبان همیشه subscription_url دارد — پورت/مسیر در پنل مرزبان تنظیم می‌شود
             $nodeHostname = rtrim($settings->get('marzban_node_hostname', ''), '/');
-            $subPort      = $settings->get('xui_subscription_port') ?: '2096';
-            $subPath      = rtrim($settings->get('xui_subscription_path') ?: '/sub', '/');
-            $subId        = ltrim($response['subscription_url'], '/');
-
-            // اگر nodeHostname شامل پورت نیست، پورت sub را اضافه کن
-            $parsedHost = parse_url($nodeHostname);
-            if (empty($parsedHost['port'])) {
-                $base = rtrim($nodeHostname, '/') . ':' . $subPort;
-            } else {
-                $base = $nodeHostname;
-            }
-
-            return [true, $base . $subPath . '/' . basename($subId)];
+            $subPath      = ltrim($response['subscription_url'], '/');
+            return [true, $nodeHostname . '/' . $subPath];
         }
 
-        // ── کانفیگ مستقیم از Marzban (links array) ────────────────────────
+        // fallback: اگر subscription_url نبود از links استفاده کن
         if (! empty($response['links'])) {
             $links = array_values(array_filter($response['links']));
             return [true, count($links) === 1 ? $links[0] : json_encode($links)];
         }
 
-        // fallback: فقط sub URL خام
-        $nodeHostname = rtrim($settings->get('marzban_node_hostname', ''), '/');
-        $subUrl       = ltrim($response['subscription_url'] ?? '', '/');
-        return [true, $nodeHostname . '/' . $subUrl];
+        throw new \Exception('مرزبان نه subscription_url و نه links برگرداند.');
     }
 
     // ── X-UI ─────────────────────────────────────────────────────────────────
