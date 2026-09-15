@@ -37,22 +37,22 @@ WEB_USER="www-data"
 
 # ---------------------------- Helpers ----------------------------
 banner() {
-        echo -e "${CYAN}"
-        echo "╔══════════════════════════════════════════════════════════╗"
-        echo "║                                                          ║"
-        echo "║  ██╗   ██╗██████╗  █████╗ ███╗   ██╗███████╗██╗         ║"
-        echo "║  ██║   ██║██╔══██╗██╔══██╗████╗  ██║██╔════╝██║         ║"
-        echo "║  ██║   ██║██████╔╝███████║██╔██╗ ██║█████╗  ██║         ║"
-        echo "║  ╚██╗ ██╔╝██╔═══╝ ██╔══██║██║╚██╗██║██╔══╝  ██║         ║"
-        echo "║   ╚████╔╝ ██║     ██║  ██║██║ ╚████║███████╗███████╗    ║"
-        echo "║    ╚═══╝  ╚═╝     ╚═╝  ╚═╝╚═╝  ╚═══╝╚══════╝╚══════╝    ║"
-        echo "║                                                          ║"
-        echo "║          Website : www.iranli.com                       ║"
-        echo "║          Creator : Iranli                               ║"
-        echo "║          Tool    : VPanel Auto Installer v1.0           ║"
-        echo "║                                                          ║"
-        echo "╚══════════════════════════════════════════════════════════╝"
-        echo -e "${NC}"
+    echo -e "${CYAN}"
+    echo "╔══════════════════════════════════════════════════════════╗"
+    echo "║                                                          ║"
+    echo "║  ██╗   ██╗██████╗  █████╗ ███╗   ██╗███████╗██╗         ║"
+    echo "║  ██║   ██║██╔══██╗██╔══██╗████╗  ██║██╔════╝██║         ║"
+    echo "║  ██║   ██║██████╔╝███████║██╔██╗ ██║█████╗  ██║         ║"
+    echo "║  ╚██╗ ██╔╝██╔═══╝ ██╔══██║██║╚██╗██║██╔══╝  ██║         ║"
+    echo "║   ╚████╔╝ ██║     ██║  ██║██║ ╚████║███████╗███████╗    ║"
+    echo "║    ╚═══╝  ╚═╝     ╚═╝  ╚═╝╚═╝  ╚═══╝╚══════╝╚══════╝    ║"
+    echo "║                                                          ║"
+    echo "║          Website : www.iranli.com                       ║"
+    echo "║          Creator : Iranli                               ║"
+    echo "║          Tool    : VPanel Auto Installer v1.0           ║"
+    echo "║                                                          ║"
+    echo "╚══════════════════════════════════════════════════════════╝"
+    echo -e "${NC}"
 }
 
 install_banner() {
@@ -79,6 +79,35 @@ require_root() {
     fi
 }
 
+# Validate a domain/subdomain format (e.g. example.com, panel.example.com)
+is_valid_domain() {
+    local domain="$1"
+    [[ "$domain" =~ ^([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,63}$ ]]
+}
+
+# Request an SSL certificate with automatic retries, since DNS/firewall
+# propagation right after install may not be instantly ready.
+request_ssl_certificate() {
+    local domain="$1"
+    local email="$2"
+    local attempts=4
+    local wait_seconds=20
+    local i=1
+
+    while [ $i -le $attempts ]; do
+        step "🔒 Requesting SSL certificate for $domain (attempt $i/$attempts)..."
+        if sudo certbot --nginx -d "$domain" --non-interactive --agree-tos -m "$email"; then
+            return 0
+        fi
+        if [ $i -lt $attempts ]; then
+            error "Attempt $i failed — DNS/firewall may still be propagating. Retrying in ${wait_seconds}s..."
+            sleep $wait_seconds
+        fi
+        i=$((i + 1))
+    done
+    return 1
+}
+
 # ==================================================================================
 # ===                                INSTALL                                    ===
 # ==================================================================================
@@ -88,8 +117,14 @@ install_vpanel() {
     echo
 
     # --- Collect information from the user ---
-    read -p "🌐 Domain: " DOMAIN
-    DOMAIN=$(echo "$DOMAIN" | sed 's|http[s]*://||g' | sed 's|/.*||g')
+    while true; do
+        read -p "🌐 Domain (e.g. panel.example.com): " DOMAIN
+        DOMAIN=$(echo "$DOMAIN" | sed 's|http[s]*://||g' | sed 's|/.*||g' | tr -d '[:space:]')
+        if is_valid_domain "$DOMAIN"; then
+            break
+        fi
+        error "❌ Invalid or empty domain. Please enter a valid domain or subdomain (e.g. panel.example.com)."
+    done
 
     read -p "✉️ Email (used for SSL certificate): " ADMIN_EMAIL
     echo
@@ -247,14 +282,13 @@ EOF
     sudo -u ${WEB_USER} php artisan route:cache
     sudo -u ${WEB_USER} php artisan view:cache
 
-    # --- SSL (enabled by default, never blocks the install) ---
-    step "🔒 Requesting SSL certificate for $DOMAIN..."
+    # --- SSL (enabled by default, retries automatically, never blocks the install) ---
     SSL_ENABLED="no"
-    if sudo certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos -m "$ADMIN_EMAIL"; then
+    if request_ssl_certificate "$DOMAIN" "$ADMIN_EMAIL"; then
         success "✔ SSL certificate issued successfully."
         SSL_ENABLED="yes"
     else
-        error "⚠️ SSL setup failed (domain not reachable on port 80/443 yet)."
+        error "⚠️ SSL setup failed after several attempts (domain not reachable on port 80/443 yet)."
         error "The rest of the installation completed successfully — the site is available over HTTP."
         error "Once DNS/firewall is fixed, just run: sudo $0 update"
         error "(the update process will automatically retry issuing the SSL certificate)"
@@ -324,67 +358,96 @@ update_vpanel() {
     echo
 
     # --- Step 1: Prepare environment & enable maintenance mode ---
-    step "Step 1/8: Preparing environment and enabling maintenance mode..."
+    step "Step 1/9: Preparing environment and enabling maintenance mode..."
 
     echo "Creating and setting permissions for the NPM cache folder..."
     sudo mkdir -p /var/www/.npm
     sudo chown -R ${WEB_USER}:${WEB_USER} /var/www/.npm
 
-    sudo cp .env ".env.bak.$(date +%Y-%m-%d_%H-%M-%S)"
-    echo "A backup of your .env file has been created in the same directory."
+    ENV_BACKUP=".env.bak.$(date +%Y-%m-%d_%H-%M-%S)"
+    sudo cp .env "$ENV_BACKUP"
+    echo "A backup of your .env file has been created: $ENV_BACKUP"
 
     sudo -u ${WEB_USER} php artisan down || true
 
     # --- Step 2: Pull latest code from GitHub ---
-    step "Step 2/8: Fetching the latest changes from GitHub..."
+    step "Step 2/9: Fetching the latest changes from GitHub..."
     sudo git fetch origin
     sudo git reset --hard origin/main
 
+    # Guarantee .env survives the reset no matter what (protects APP_KEY, DB creds, SSL email)
+    sudo cp "$ENV_BACKUP" .env
+
     # --- Step 3: Fix file permissions ---
-    step "Step 3/8: Resetting file permissions..."
+    step "Step 3/9: Resetting file permissions..."
     sudo chown -R ${WEB_USER}:${WEB_USER} .
     sudo chmod -R 775 storage bootstrap/cache
 
     # --- Step 4: Update PHP dependencies (Composer) ---
-    step "Step 4/8: Updating PHP packages..."
+    step "Step 4/9: Updating PHP packages..."
     sudo mkdir -p /var/www/.cache
     sudo chown -R ${WEB_USER}:${WEB_USER} /var/www/.cache
     sudo -u ${WEB_USER} HOME=/var/www composer install --no-dev --optimize-autoloader
 
+    # Make sure APP_KEY is present — a missing key is the #1 cause of a blank/500 page
+    if ! grep -q '^APP_KEY=base64:' .env 2>/dev/null; then
+        error "⚠️ APP_KEY missing after update — regenerating it..."
+        sudo -u ${WEB_USER} php artisan key:generate --force
+    fi
+
     # --- Step 5: Update frontend dependencies (NPM) ---
-    step "Step 5/8: Updating Node.js packages and compiling assets..."
+    step "Step 5/9: Updating Node.js packages and compiling assets..."
     sudo -u ${WEB_USER} HOME=/var/www npm install
     sudo -u ${WEB_USER} HOME=/var/www npm run build
     echo "JS/CSS assets compiled for production."
 
     # --- Step 6: Update database & restart services ---
-    step "Step 6/8: Updating database and restarting services..."
+    step "Step 6/9: Updating database and restarting services..."
     sudo -u ${WEB_USER} php artisan migrate --force
     sudo supervisorctl restart vpanel-worker:* || true
     echo "Queue worker services restarted successfully."
 
-    # --- Step 7: Clear caches & disable maintenance mode ---
-    step "Step 7/8: Clearing caches and bringing the site back online..."
+    # --- Step 7: Rebuild caches & disable maintenance mode ---
+    step "Step 7/9: Rebuilding caches and bringing the site back online..."
     sudo -u ${WEB_USER} php artisan optimize:clear
+    sudo -u ${WEB_USER} php artisan config:cache
+    sudo -u ${WEB_USER} php artisan route:cache
+    sudo -u ${WEB_USER} php artisan view:cache
+    sudo -u ${WEB_USER} php artisan storage:link || true
     sudo -u ${WEB_USER} php artisan up
 
-    # --- Step 8: Retry SSL if it isn't active yet ---
+    # --- Step 8: Re-check / retry SSL for the domain used at install time ---
     DOMAIN=$(grep '^APP_URL=' .env | head -n1 | cut -d '=' -f2- | sed 's|https\?://||' | sed 's|/.*||')
     SSL_EMAIL=$(grep '^VPANEL_SSL_EMAIL=' .env | head -n1 | cut -d '=' -f2-)
 
-    if [ -n "$DOMAIN" ] && [ ! -f "/etc/letsencrypt/live/$DOMAIN/fullchain.pem" ]; then
-        step "Step 8/8: No active SSL certificate found for $DOMAIN — retrying..."
-        if [ -z "$SSL_EMAIL" ]; then
-            error "⚠️ No saved SSL email found; skipping automatic SSL. Run manually:"
-            error "   sudo certbot --nginx -d $DOMAIN --agree-tos -m your@email.com"
-        elif sudo certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos -m "$SSL_EMAIL"; then
-            success "✔ SSL certificate issued successfully for $DOMAIN."
+    if [ -z "$DOMAIN" ]; then
+        step "Step 8/9: No domain found in .env — skipping SSL check."
+    elif [ -z "$SSL_EMAIL" ]; then
+        error "Step 8/9: ⚠️ No saved SSL email found; skipping automatic SSL. Run manually:"
+        error "   sudo certbot --nginx -d $DOMAIN --agree-tos -m your@email.com"
+    else
+        step "Step 8/9: Checking SSL certificate for $DOMAIN..."
+        # certbot is idempotent: if a valid cert already exists it just confirms and exits 0,
+        # so it's safe to call this on every update instead of relying on a fragile file check.
+        if request_ssl_certificate "$DOMAIN" "$SSL_EMAIL"; then
+            success "✔ SSL certificate is active for $DOMAIN."
         else
             error "⚠️ SSL still could not be issued (domain/firewall may not be ready yet)."
-            error "The update itself completed successfully."
+            error "The update itself completed successfully; the site remains available over HTTP."
         fi
+    fi
+
+    # --- Step 9: Health check ---
+    step "Step 9/9: Verifying the site responds correctly..."
+    CHECK_URL="http://$DOMAIN"
+    [ -f "/etc/letsencrypt/live/$DOMAIN/fullchain.pem" ] && CHECK_URL="https://$DOMAIN"
+    HTTP_CODE=$(curl -sk -o /dev/null -w "%{http_code}" --max-time 15 "$CHECK_URL" || echo "000")
+
+    if [[ "$HTTP_CODE" == "200" || "$HTTP_CODE" == "301" || "$HTTP_CODE" == "302" ]]; then
+        success "✔ Site responded with HTTP $HTTP_CODE — update looks healthy."
     else
-        step "Step 8/8: SSL certificate already active for $DOMAIN — nothing to do."
+        error "⚠️ Site responded with HTTP $HTTP_CODE. Showing the last lines of the Laravel log for troubleshooting:"
+        sudo tail -n 30 storage/logs/laravel.log 2>/dev/null || error "No log file found at storage/logs/laravel.log."
     fi
 
     echo
