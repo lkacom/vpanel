@@ -15,7 +15,7 @@
                 </a>
 
                 <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                    پنل مدیریت v2ray
+                    پنل مدیریت و فروش کانفیگ
                 </p>
             </div>
 
