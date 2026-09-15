@@ -107,14 +107,12 @@ class VpnSettings extends Page implements HasForms
 
                                 // ── توضیح — بدون toggle ─────────────────────────
                                 Placeholder::make('marzban_sub_info')
-                                    ->label('')
+                                    ->label('سابسکریپشن')
                                     ->content(new HtmlString(
                                         '<div class="flex gap-3 items-start text-sm bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-lg px-4 py-3">'
                                         . '<span class="text-blue-500 text-base mt-0.5">ℹ️</span>'
                                         . '<div class="text-blue-700 dark:text-blue-300">'
-                                        . '<strong>Subscription در مرزبان همیشه فعال است</strong> و نیازی به تنظیم جداگانه ندارد. '
-                                        . 'پس از ساخت کاربر، API مرزبان لینک sub را خودکار برمی‌گرداند. '
-                                        . 'پورت و مسیر آن در تنظیمات خود پنل مرزبان تعیین می‌شود.'
+                                        . 'Subscription همیشه در پنل مرزبان به صورت پیش فرض فعال است. '
                                         . '</div></div>'
                                     ))
                                     ->columnSpanFull(),
@@ -151,7 +149,7 @@ class VpnSettings extends Page implements HasForms
             \Filament\Forms\Components\Toggle::make('xui_subscription_enabled')
                 ->label('فعال‌سازی Subscription')
                 ->helperText(
-                    'اگر Subscription در پنل فعال است، کاربر لینک sub دریافت می‌کند. '
+                    'قبل از فعالسازی این گزینه اطمینان حاص نمایید گزینه Subscription در پنل شما فعال است.'
                     . 'در غیر این صورت تمام کانفیگ‌های مستقیم (به تعداد inbound ها) داده می‌شود.'
                 )
                 ->onColor('success')
