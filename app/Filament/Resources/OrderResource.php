@@ -112,10 +112,10 @@ class OrderResource extends Resource
                 TextColumn::make('payment_method')
                     ->label('روش پرداخت')->badge()
                     ->formatStateUsing(fn ($state) => match ($state) {
-                        'wallet' => 'کیف پول', 'card' => 'کارت', 'crypto' => 'ارز دیجیتال', default => 'نامشخص',
+                        'wallet' => 'کیف پول', 'card' => 'کارت', 'crypto' => 'ارز دیجیتال', 'jibit' => 'جیبیت', default => 'نامشخص',
                     })
                     ->color(fn (string $state): string => match ($state) {
-                        'wallet' => 'success', 'card' => 'warning', 'crypto' => 'info', default => 'gray',
+                        'wallet' => 'success', 'card' => 'warning', 'crypto' => 'info', 'jibit' => 'purple', default => 'gray',
                     }),
 
                 TextColumn::make('created_at')->label('تاریخ سفارش')->toggleable()->dateTime('Y-m-d')->sortable()

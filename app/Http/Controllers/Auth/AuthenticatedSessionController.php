@@ -8,6 +8,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
+// RedirectResponse برای logout و store هنوز استفاده می‌شود
 
 class AuthenticatedSessionController extends Controller
 {
@@ -16,14 +17,8 @@ class AuthenticatedSessionController extends Controller
      * اگر قالب اصلی غیرفعال است (welcome)، صفحه ورود کاربر در / نمایش داده می‌شود.
      * برای جلوگیری از نمایش فرم Breeze نیمه‌فارسی، /login را به / ریدایرکت می‌کنیم.
      */
-    public function create(): View|RedirectResponse
+    public function create(): View
     {
-        $activeTheme = \App\Models\Setting::where('key', 'active_theme')->value('value') ?? 'rocket';
-
-        if ($activeTheme === 'welcome') {
-            return redirect('/');
-        }
-
         return view('auth.login');
     }
 

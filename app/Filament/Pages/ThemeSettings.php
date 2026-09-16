@@ -17,7 +17,6 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Storage;
 
 class ThemeSettings extends Page implements HasForms
 {
@@ -35,15 +34,12 @@ class ThemeSettings extends Page implements HasForms
     {
         $settings = Setting::all()->pluck('value', 'key')->toArray();
 
-        // تبدیل مقدار active_theme به boolean برای toggle
         $settings['main_theme_enabled'] = ($settings['active_theme'] ?? 'rocket') === 'rocket';
 
-        // لوگو ذخیره‌شده — FileUpload انتظار array دارد
-        if (!empty($settings['site_logo'])) {
-            $settings['site_logo'] = [$settings['site_logo']];
-        } else {
-            $settings['site_logo'] = [];
-        }
+        // FileUpload با disk=public و directory=logos کار می‌کند
+        // مقدار ذخیره‌شده در DB: "logos/filename.png"
+        $storedLogo = $settings['site_logo'] ?? null;
+        $settings['site_logo'] = $storedLogo ? [$storedLogo] : [];
 
         $this->form->fill(array_merge([
             'main_theme_enabled' => true,
@@ -60,9 +56,6 @@ class ThemeSettings extends Page implements HasForms
                 ->extraAttributes(['class' => 'max-w-max'])
                 ->tabs([
 
-                    // ──────────────────────────────────────────
-                    //  تب ۱: تنظیمات قالب
-                    // ──────────────────────────────────────────
                     Tabs\Tab::make('تنظیمات قالب')
                         ->icon('heroicon-o-swatch')
                         ->schema([
@@ -76,22 +69,20 @@ class ThemeSettings extends Page implements HasForms
                                         ->live(),
 
                                     FileUpload::make('site_logo')
-                                        ->label('لوگوی سایت (صفحه ورود کاربران)')
-                                        ->helperText('در صورت عدم آپلود، لوگوی پیش‌فرض (/images/logo.png) استفاده می‌شود.')
+                                        ->label('لوگوی سایت (فرم ورود کاربران)')
+                                        ->helperText('پیش‌فرض: /images/logo.png — لوگوی ادمین تغییر نمی‌کند.')
                                         ->image()
-                                        ->imagePreviewHeight('80')
+                                        ->imagePreviewHeight('100')
                                         ->maxSize(1024)
                                         ->disk('public')
                                         ->directory('logos')
                                         ->visibility('public')
+                                        ->deletable(true)
                                         ->acceptedFileTypes(['image/png', 'image/jpeg', 'image/svg+xml', 'image/webp'])
                                         ->columnSpanFull(),
                                 ]),
                         ]),
 
-                    // ──────────────────────────────────────────
-                    //  تب ۲: محتوای قالب RoketVPN
-                    // ──────────────────────────────────────────
                     Tabs\Tab::make('محتوای قالب RoketVPN (موشکی)')
                         ->icon('heroicon-o-rocket-launch')
                         ->visible(fn(Get $get) => (bool) $get('main_theme_enabled'))
@@ -121,9 +112,6 @@ class ThemeSettings extends Page implements HasForms
                             ])->columns(2),
                         ]),
 
-                    // ──────────────────────────────────────────
-                    //  تب ۳: تنظیمات پرداخت
-                    // ──────────────────────────────────────────
                     Tabs\Tab::make('تنظیمات پرداخت')
                         ->icon('heroicon-o-credit-card')
                         ->schema([
@@ -142,55 +130,46 @@ class ThemeSettings extends Page implements HasForms
                             Section::make('درگاه زرین‌پال')
                                 ->description('تنظیمات اتصال به درگاه پرداخت زرین‌پال')
                                 ->schema([
-                                    Toggle::make('zarinpal_active')
-                                        ->label('فعال‌سازی درگاه زرین‌پال')
-                                        ->helperText('درگاه را برای کاربران نمایش دهید یا مخفی کنید.')
-                                        ->onColor('success')
-                                        ->offColor('gray')
-                                        ->columnSpanFull(),
-                                    TextInput::make('zarinpal_merchant_id')
-                                        ->label('کد پذیرنده (Merchant ID)')
-                                        ->placeholder('xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx')
-                                        ->helperText('از پنل زرین‌پال → درگاه‌ها → کد پذیرنده دریافت کنید.')
-                                        ->maxLength(36)
-                                        ->columnSpanFull(),
-                                    Select::make('zarinpal_currency')
-                                        ->label('واحد پول')
-                                        ->options(['IRT' => 'تومان (IRT)', 'IRR' => 'ریال (IRR)'])
-                                        ->default('IRT'),
-                                    TextInput::make('zarinpal_gateway_name')
-                                        ->label('نام نمایشی درگاه')
-                                        ->placeholder('پرداخت آنلاین — زرین‌پال')
-                                        ->helperText('این نام در دکمه انتخاب روش پرداخت به کاربر نمایش داده می‌شود.')
-                                        ->maxLength(100),
-                                    Toggle::make('zarinpal_sandbox')
-                                        ->label('حالت آزمایشی (Sandbox)')
-                                        ->helperText('فعال کنید تا پول واقعی کسر نشود — فقط برای تست.')
-                                        ->onColor('warning')
-                                        ->offColor('gray'),
-                                ])
-                                ->columns(2),
+                                    Toggle::make('zarinpal_active')->label('فعال‌سازی درگاه زرین‌پال')
+                                        ->onColor('success')->offColor('gray')->columnSpanFull(),
+                                    TextInput::make('zarinpal_merchant_id')->label('کد پذیرنده (Merchant ID)')
+                                        ->placeholder('xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx')->maxLength(36)->columnSpanFull(),
+                                    Select::make('zarinpal_currency')->label('واحد پول')
+                                        ->options(['IRT' => 'تومان (IRT)', 'IRR' => 'ریال (IRR)'])->default('IRT'),
+                                    TextInput::make('zarinpal_gateway_name')->label('نام نمایشی درگاه')
+                                        ->placeholder('پرداخت آنلاین — زرین‌پال')->maxLength(100),
+                                    Toggle::make('zarinpal_sandbox')->label('حالت آزمایشی (Sandbox)')
+                                        ->onColor('warning')->offColor('gray'),
+                                ])->columns(2),
+
+                            Section::make('درگاه جیبیت')
+                                ->description('تنظیمات اتصال به درگاه پرداخت جیبیت')
+                                ->schema([
+                                    Toggle::make('jibit_active')->label('فعال‌سازی درگاه جیبیت')
+                                        ->onColor('success')->offColor('gray')->columnSpanFull(),
+                                    TextInput::make('jibit_api_key')->label('کد API')
+                                        ->placeholder('xxxxxxxxxxxxxxxxxxxxxxxxxxxx')->maxLength(64)->columnSpanFull(),
+                                    TextInput::make('jibit_secret_key')->label('کد رمز نگهدارنده (Secret Key)')
+                                        ->placeholder('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')->maxLength(64)->columnSpanFull(),
+                                    Select::make('jibit_currency')->label('واحد پول')
+                                        ->options(['IRT' => 'تومان (IRT)', 'IRR' => 'ریال (IRR)'])->default('IRT'),
+                                    TextInput::make('jibit_gateway_name')->label('نام نمایشی درگاه')
+                                        ->placeholder('پرداخت آنلاین — جیبیت')->maxLength(100),
+                                    Toggle::make('jibit_sandbox')->label('حالت آزمایشی (Sandbox)')
+                                        ->onColor('warning')->offColor('gray'),
+                                ])->columns(2),
                         ]),
 
-                    // ──────────────────────────────────────────
-                    //  تب ۴: سیستم دعوت از دوستان
-                    // ──────────────────────────────────────────
                     Tabs\Tab::make('سیستم دعوت از دوستان')
                         ->icon('heroicon-o-gift')
                         ->schema([
                             Section::make('تنظیمات پاداش دعوت')
                                 ->description('مبالغ پاداش را به تومان وارد کنید.')
                                 ->schema([
-                                    TextInput::make('referral_welcome_gift')
-                                        ->label('هدیه خوش‌آمدگویی')
-                                        ->numeric()
-                                        ->default(0)
-                                        ->helperText('مبلغی که بلافاصله پس از ثبت‌نام با کد معرف، به کیف پول کاربر جدید اضافه می‌شود.'),
-                                    TextInput::make('referral_referrer_reward')
-                                        ->label('پاداش معرف')
-                                        ->numeric()
-                                        ->default(0)
-                                        ->helperText('مبلغی که پس از اولین خرید موفق کاربر جدید، به کیف پول معرف او اضافه می‌شود.'),
+                                    TextInput::make('referral_welcome_gift')->label('هدیه خوش‌آمدگویی')
+                                        ->numeric()->default(0),
+                                    TextInput::make('referral_referrer_reward')->label('پاداش معرف')
+                                        ->numeric()->default(0),
                                 ]),
                         ]),
 
@@ -203,28 +182,42 @@ class ThemeSettings extends Page implements HasForms
         $this->form->validate();
         $formData = $this->form->getState();
 
-        // ── active_theme از toggle ──────────────────────────
-        $mainThemeEnabled = $formData['main_theme_enabled'] ?? true;
-        $formData['active_theme'] = $mainThemeEnabled ? 'rocket' : 'welcome';
+        // ── active_theme از toggle ──
+        $formData['active_theme'] = ($formData['main_theme_enabled'] ?? true) ? 'rocket' : 'welcome';
         unset($formData['main_theme_enabled']);
 
-        // ── پردازش لوگو ────────────────────────────────────
-        // FileUpload مقدار را به صورت array برمی‌گرداند
+        // ── پردازش لوگو ──
+        // FileUpload با disk=public مقدار را به صورت "logos/filename.ext" برمی‌گرداند
         $logoArray = $formData['site_logo'] ?? [];
         if (is_array($logoArray) && count($logoArray) > 0) {
-            // مسیر نسبی فایل در disk public
-            $formData['site_logo'] = array_values($logoArray)[0];
+            $item = array_values($logoArray)[0];
+            if (is_string($item) && strlen($item) > 0) {
+                $formData['site_logo'] = $item; // مثلاً: logos/01M2K5KXV07B11SM6WK9KAPP75.png
+            } else {
+                unset($formData['site_logo']);
+            }
         } else {
-            // اگر خالی است، کلید را حذف کن تا لوگوی قبلی پاک نشود
-            unset($formData['site_logo']);
+            $formData['site_logo'] = ''; // حذف لوگو
         }
 
-        // ── ذخیره همه تنظیمات ──────────────────────────────
         foreach ($formData as $key => $value) {
             Setting::updateOrCreate(['key' => $key], ['value' => $value ?? '']);
         }
 
         Cache::forget('settings');
+
+        // لوگو ذخیره‌شده را به public/uploads/logos کپی کن تا بدون symlink قابل دسترسی باشد
+        $savedLogo = Setting::where('key', 'site_logo')->value('value');
+        if ($savedLogo) {
+            $src = storage_path('app/public/' . $savedLogo);
+            if (file_exists($src)) {
+                $pubDir = public_path('uploads/logos');
+                if (!is_dir($pubDir)) mkdir($pubDir, 0755, true);
+                copy($src, $pubDir . '/' . basename($savedLogo));
+            }
+        }
+
+        $this->mount();
         Notification::make()->title('تنظیمات با موفقیت ذخیره شد.')->success()->send();
     }
 }

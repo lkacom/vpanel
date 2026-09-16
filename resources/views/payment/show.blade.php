@@ -107,6 +107,23 @@
                         </form>
                         @endif
 
+                        {{-- جیبیت --}}
+                        @php
+                            $jSettings = \App\Models\Setting::all()->pluck('value', 'key');
+                            $jActive   = filter_var($jSettings->get('jibit_active'), FILTER_VALIDATE_BOOLEAN);
+                            $jEnabled  = $jActive && ! empty($jSettings->get('jibit_api_key')) && ! empty($jSettings->get('jibit_secret_key'));
+                        @endphp
+                        @if ($jEnabled)
+                        <form method="POST" action="{{ route('payment.jibit.initiate', $order->id) }}">
+                            @csrf
+                            <button type="submit"
+                                    class="w-full text-center p-6 border-2 rounded-lg transition dark:border-gray-600 dark:hover:border-purple-500">
+                            <h4 class="font-bold text-gray-900 dark:text-gray-100">پرداخت با جیبیت</h4>
+                            <p class="text-sm text-gray-600 dark:text-gray-400 mt-2">پرداخت سریع و امن با کد API</p>
+                        </button>
+                    </form>
+                    @endif
+
                         {{-- ارز دیجیتال (غیرفعال) --}}
                         <div class="w-full text-center p-6 border-2 rounded-lg transition dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 cursor-not-allowed opacity-60">
                             <h4 class="font-bold text-gray-500 dark:text-gray-400">پرداخت با ارز دیجیتال</h4>

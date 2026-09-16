@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Route;
 
 use App\Http\Controllers\WebhookController as NowPaymentsWebhookController;
 use App\Http\Controllers\ZarinpalController;
+use App\Http\Controllers\JibitController;
 
 /*
 |--------------------------------------------------------------------------
@@ -125,6 +126,10 @@ Route::post('/webhooks/nowpayments', [NowPaymentsWebhookController::class, 'hand
 Route::middleware('auth')->post('/payment/zarinpal/{order}', [ZarinpalController::class, 'initiate'])->name('payment.zarinpal.initiate');
 Route::get('/payment/zarinpal/receipt', [ZarinpalController::class, 'callback'])->name('payment.zarinpal.callback');
 Route::get('/payment/zarinpal/callback', [ZarinpalController::class, 'callback']);  // backward compat
+// ── Jibit Payment Gateway ───────────────────────────────────────────────────
+Route::middleware('auth')->post('/payment/jibit/{order}', [JibitController::class, 'initiate'])->name('payment.jibit.initiate');
+Route::get('/payment/jibit/receipt', [JibitController::class, 'callback'])->name('payment.jibit.callback');
+Route::get('/payment/jibit/callback', [JibitController::class, 'callback']);  // backward compat
 // ────────────────────────────────────────────────────────────────────────────
 
 

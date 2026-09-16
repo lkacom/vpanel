@@ -16,6 +16,8 @@ class Order extends Model
         'panel_username',
         'zarinpal_authority',
         'zarinpal_ref_id',
+        'jibit_authority',
+        'jibit_ref_id',
         'renews_order_id',
     ];
 
