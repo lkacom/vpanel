@@ -67,10 +67,20 @@ class ThemeSettings extends Page implements HasForms
                                         ->onColor('success')
                                         ->offColor('gray')
                                         ->live(),
+                                ]),
+
+                            Section::make('تنظیمات فرم ورود کاربران')
+                                ->description('این تنظیمات روی صفحات /login، /register و /forgot-password اعمال می‌شود.')
+                                ->schema([
+                                    TextInput::make('login_brand_name')
+                                        ->label('نام نمایشی بالای فرم')
+                                        ->placeholder(config('app.name', 'VPanel'))
+                                        ->helperText('پیش‌فرض: نام اپلیکیشن از .env')
+                                        ->maxLength(60),
 
                                     FileUpload::make('site_logo')
-                                        ->label('لوگوی سایت (فرم ورود کاربران)')
-                                        ->helperText('پیش‌فرض: /images/logo.png — لوگوی ادمین تغییر نمی‌کند.')
+                                        ->label('لوگوی فرم ورود')
+                                        ->helperText('پیش‌فرض: /images/logo.png — لوگوی پنل ادمین تغییر نمی‌کند.')
                                         ->image()
                                         ->imagePreviewHeight('100')
                                         ->maxSize(1024)
@@ -80,7 +90,7 @@ class ThemeSettings extends Page implements HasForms
                                         ->deletable(true)
                                         ->acceptedFileTypes(['image/png', 'image/jpeg', 'image/svg+xml', 'image/webp'])
                                         ->columnSpanFull(),
-                                ]),
+                                ])->columns(1),
                         ]),
 
                     Tabs\Tab::make('محتوای قالب RoketVPN (موشکی)')

@@ -4,233 +4,266 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{{ config('app.name', 'VPanel') }}</title>
 
     @php
-        // لوگوی سفارشی از DB — مستقیم از storage/app/public خوانده می‌شود
-        $storedLogo = \App\Models\Setting::where('key', 'site_logo')->value('value');
-        if ($storedLogo) {
-            $absPath = storage_path('app/public/' . $storedLogo);
-            if (file_exists($absPath)) {
-                // کپی به public/uploads/logos برای دسترسی مستقیم از web
-                $pubDir  = public_path('uploads/logos');
-                if (!is_dir($pubDir)) mkdir($pubDir, 0755, true);
-                $destFile = $pubDir . '/' . basename($storedLogo);
-                if (!file_exists($destFile) || filemtime($absPath) > filemtime($destFile)) {
-                    copy($absPath, $destFile);
-                }
-                $logoUrl = asset('uploads/logos/' . basename($storedLogo));
-            } else {
-                $logoUrl = asset('images/logo.png');
-            }
-        } else {
-            $logoUrl = asset('images/logo.png');
-        }
+        $s         = \App\Models\Setting::all()->pluck('value','key');
+        $brandName = $s->get('login_brand_name') ?: config('app.name', 'VPanel');
+        $stored    = $s->get('site_logo');
+        if ($stored) {
+            $abs  = storage_path('app/public/' . $stored);
+            $dest = public_path('uploads/logos/' . basename($stored));
+            if (file_exists($abs)) {
+                $dir = public_path('uploads/logos');
+                if (!is_dir($dir)) mkdir($dir, 0755, true);
+                if (!file_exists($dest) || filemtime($abs) > filemtime($dest)) copy($abs, $dest);
+                $logoUrl = asset('uploads/logos/' . basename($stored));
+            } else { $logoUrl = asset('images/logo.png'); }
+        } else { $logoUrl = asset('images/logo.png'); }
     @endphp
 
+    <title>{{ $brandName }}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;600;700;900&display=swap');
-
-        :root {
-            --neon-cyan:    #00f6ff;
-            --neon-magenta: #ff00c1;
-            --bg-dark:      #0a0a1a;
-            --bg-card:      rgba(15, 15, 35, 0.85);
-            --text-light:   #e0e0ff;
-            --border-color: rgba(0, 246, 255, 0.25);
-            --danger:       #ff4d6d;
-        }
-
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-        body {
-            font-family: 'Vazirmatn', sans-serif;
-            background-color: var(--bg-dark);
-            color: var(--text-light);
+        :root {
+            --blue-500: #3b82f6;
+            --blue-600: #2563eb;
+            --blue-700: #1d4ed8;
+            --indigo-600: #4f46e5;
+            --gray-50:  #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-400: #9ca3af;
+            --gray-500: #6b7280;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-900: #111827;
+            --red-500:  #ef4444;
+            --red-600:  #dc2626;
+        }
+
+        html, body {
+            font-family: 'Vazirmatn', ui-sans-serif, system-ui, sans-serif;
             min-height: 100vh;
+        }
+
+        body {
             display: flex;
             align-items: center;
             justify-content: center;
             padding: 1.5rem 1rem;
-            /* پس‌زمینه سایبرپانک */
-            background-image:
-                radial-gradient(ellipse at 20% 50%, rgba(0,246,255,.07) 0%, transparent 60%),
-                radial-gradient(ellipse at 80% 20%, rgba(255,0,193,.07) 0%, transparent 60%);
+            background: #f0f4ff;
+            position: relative;
+            overflow: hidden;
         }
 
-        /* ── کارت اصلی ── */
+        /* ── دایره‌های پس‌زمینه ── */
+        body::before, body::after {
+            content: '';
+            position: fixed;
+            border-radius: 50%;
+            pointer-events: none;
+        }
+        body::before {
+            width: 600px; height: 600px;
+            top: -200px; right: -150px;
+            background: radial-gradient(circle, rgba(99,102,241,.15) 0%, transparent 70%);
+        }
+        body::after {
+            width: 500px; height: 500px;
+            bottom: -180px; left: -120px;
+            background: radial-gradient(circle, rgba(59,130,246,.12) 0%, transparent 70%);
+        }
+
+        /* ── کارت یکپارچه ── */
         .auth-card {
             width: 100%;
-            max-width: 26rem;
-            background: var(--bg-card);
-            border: 1px solid var(--border-color);
-            padding: 2rem 2rem 2.25rem;
-            clip-path: polygon(0 0, 100% 0, 100% calc(100% - 18px), calc(100% - 18px) 100%, 0 100%);
-            backdrop-filter: blur(12px);
+            max-width: 22rem;
+            background: #ffffff;
+            border-radius: 1.5rem;
+            box-shadow: 0 8px 40px rgba(37,99,235,.13), 0 2px 8px rgba(0,0,0,.06);
+            padding: 2.5rem 2rem 2rem;
+            position: relative;
+            z-index: 1;
         }
 
-        /* ── هدر ── */
+        /* ── هدر داخل کارت ── */
         .auth-header {
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: .6rem;
-            margin-bottom: 1.75rem;
+            gap: .75rem;
+            margin-bottom: 2rem;
             text-align: center;
-        }
-        .auth-logo {
-            max-height: 60px;
-            max-width: 160px;
-            object-fit: contain;
-        }
-        .auth-title {
-            font-size: 1.1rem;
-            font-weight: 700;
-            color: var(--neon-cyan);
-            text-shadow: 0 0 10px rgba(0,246,255,.5);
-            letter-spacing: .03em;
         }
 
-        /* ── تب‌ها ── */
-        .auth-tabs {
+        .auth-logo-ring {
+            width: 80px;
+            height: 80px;
+            border-radius: 1.25rem;
+            background: linear-gradient(135deg, #eff6ff 0%, #e0e7ff 100%);
+            border: 2px solid #dbeafe;
             display: flex;
-            gap: 2px;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            box-shadow: 0 4px 16px rgba(37,99,235,.12);
+        }
+        .auth-logo {
+            max-width: 58px;
+            max-height: 58px;
+            object-fit: contain;
+        }
+
+        .auth-brand {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--gray-900);
+            letter-spacing: -.02em;
+        }
+
+        .auth-subtitle {
+            font-size: .8rem;
+            color: var(--gray-400);
+            font-weight: 500;
+            letter-spacing: .05em;
+            text-transform: uppercase;
+        }
+
+        /* ── خط جداکننده ── */
+        .auth-divider {
+            height: 1px;
+            background: var(--gray-100);
             margin-bottom: 1.5rem;
-            border-bottom: 1px solid var(--border-color);
-        }
-        .auth-tab {
-            flex: 1;
-            text-align: center;
-            padding: .45rem .5rem;
-            font-size: .875rem;
-            font-weight: 600;
-            color: rgba(224,224,255,.5);
-            text-decoration: none;
-            border-bottom: 2px solid transparent;
-            margin-bottom: -1px;
-            transition: color 150ms, border-color 150ms;
-        }
-        .auth-tab:hover { color: var(--text-light); }
-        .auth-tab.active {
-            color: var(--neon-cyan);
-            border-bottom-color: var(--neon-cyan);
-            text-shadow: 0 0 8px rgba(0,246,255,.4);
         }
 
         /* ── فیلدها ── */
-        .field-group { display: grid; gap: .45rem; margin-bottom: 1.1rem; }
+        .field-group { display: grid; gap: .4rem; margin-bottom: 1rem; }
 
         .field-label {
             font-size: .8rem;
             font-weight: 600;
-            color: rgba(224,224,255,.75);
+            color: var(--gray-700);
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
         .field-label a {
             font-size: .75rem;
-            color: var(--neon-cyan);
+            font-weight: 500;
+            color: var(--blue-600);
             text-decoration: none;
-            opacity: .8;
         }
-        .field-label a:hover { opacity: 1; }
+        .field-label a:hover { color: var(--blue-700); text-decoration: underline; }
 
         .input-wrap {
             display: flex;
-            border: 1px solid var(--border-color);
-            background: rgba(0,0,0,.3);
-            transition: border-color 150ms, box-shadow 150ms;
+            align-items: center;
+            border: 1.5px solid var(--gray-200);
+            border-radius: .625rem;
+            background: var(--gray-50);
+            transition: border-color 150ms, box-shadow 150ms, background 150ms;
         }
         .input-wrap:focus-within {
-            border-color: var(--neon-cyan);
-            box-shadow: 0 0 8px rgba(0,246,255,.2);
+            border-color: var(--blue-500);
+            background: #fff;
+            box-shadow: 0 0 0 3px rgba(59,130,246,.1);
         }
-        .input-wrap.has-error { border-color: var(--danger); }
-
+        .input-wrap.has-error {
+            border-color: var(--red-500);
+            box-shadow: 0 0 0 3px rgba(239,68,68,.08);
+        }
+        .input-icon {
+            padding: 0 .75rem;
+            color: var(--gray-400);
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+        }
+        .input-wrap:focus-within .input-icon { color: var(--blue-500); }
         .input-wrap input {
-            display: block;
-            width: 100%;
+            flex: 1;
             border: none;
             outline: none;
             background: transparent;
-            padding: .5rem .75rem;
+            padding: .65rem .75rem .65rem 0;
             font-size: .875rem;
-            color: var(--text-light);
+            color: var(--gray-900);
             font-family: inherit;
         }
-        .input-wrap input::placeholder { color: rgba(224,224,255,.3); }
+        .input-wrap input::placeholder { color: var(--gray-400); }
 
-        .field-error { font-size: .78rem; color: var(--danger); }
+        .field-error { font-size: .75rem; color: var(--red-600); }
 
-        /* ── session status ── */
+        /* ── session / helper ── */
         .session-status {
-            margin-bottom: 1rem;
-            padding: .65rem .9rem;
-            font-size: .82rem;
-            color: #4ade80;
-            border: 1px solid rgba(74,222,128,.3);
-            background: rgba(74,222,128,.05);
+            margin-bottom: 1rem; padding: .6rem .85rem; font-size: .82rem;
+            color: #15803d; border: 1px solid #bbf7d0; background: #f0fdf4;
+            border-radius: .5rem; text-align: center;
         }
         .helper-text {
-            margin-bottom: 1.1rem;
-            font-size: .82rem;
-            color: rgba(224,224,255,.55);
-            line-height: 1.6;
+            margin-bottom: 1.1rem; font-size: .82rem;
+            color: var(--gray-500); line-height: 1.7; text-align: center;
         }
 
-        /* ── Checkbox ── */
-        .remember-row { display: flex; align-items: center; gap: .6rem; margin-bottom: 1.25rem; }
-        .remember-row input { accent-color: var(--neon-cyan); cursor: pointer; }
-        .remember-row label { font-size: .82rem; color: rgba(224,224,255,.7); cursor: pointer; }
+        /* ── Remember ── */
+        .remember-row { display: flex; align-items: center; gap: .5rem; margin-bottom: 1.25rem; }
+        .remember-row input { accent-color: var(--blue-600); cursor: pointer; }
+        .remember-row label { font-size: .82rem; color: var(--gray-600); cursor: pointer; user-select: none; }
 
         /* ── دکمه ── */
-        .btn-cyber {
-            display: block;
-            width: 100%;
-            padding: .6rem 1rem;
-            font-family: inherit;
-            font-size: .875rem;
-            font-weight: 700;
-            color: var(--neon-cyan);
-            background: transparent;
-            border: 2px solid var(--neon-cyan);
-            cursor: pointer;
-            transition: all 200ms;
-            text-align: center;
-            box-shadow: 0 0 8px rgba(0,246,255,.2), inset 0 0 8px rgba(0,246,255,.05);
+        .btn-primary {
+            display: flex; align-items: center; justify-content: center; gap: .5rem;
+            width: 100%; padding: .72rem 1rem;
+            background: linear-gradient(135deg, var(--blue-600) 0%, var(--indigo-600) 100%);
+            color: #fff; font-family: inherit; font-size: .9rem; font-weight: 700;
+            border: none; border-radius: .625rem; cursor: pointer;
+            box-shadow: 0 4px 14px rgba(37,99,235,.3);
+            transition: opacity 180ms, transform 150ms, box-shadow 180ms;
         }
-        .btn-cyber:hover {
-            background: var(--neon-cyan);
-            color: var(--bg-dark);
-            box-shadow: 0 0 20px rgba(0,246,255,.5);
+        .btn-primary:hover { opacity: .92; transform: translateY(-1px); box-shadow: 0 6px 20px rgba(37,99,235,.4); }
+        .btn-primary:active { transform: translateY(0); }
+
+        /* ── لینک پایین ── */
+        .auth-footer-link {
+            margin-top: 1.25rem; text-align: center;
+            font-size: .82rem; color: var(--gray-400);
         }
+        .auth-footer-link a {
+            color: var(--blue-600); text-decoration: none; font-weight: 600; margin-right: .2rem;
+        }
+        .auth-footer-link a:hover { text-decoration: underline; }
     </style>
 </head>
 
 <body>
     <div class="auth-card">
 
-        {{-- هدر --}}
         <div class="auth-header">
-            <a href="{{ url('/') }}">
+            <div class="auth-logo-ring">
                 <img src="{{ $logoUrl }}"
-                     alt="{{ config('app.name') }}"
+                     alt="{{ $brandName }}"
                      class="auth-logo"
                      onerror="this.src='{{ asset('images/logo.png') }}'" />
-            </a>
-            <div class="auth-title">{{ config('app.name', 'VPanel') }}</div>
+            </div>
+            <div>
+                <div class="auth-brand">{{ $brandName }}</div>
+                <div class="auth-subtitle">
+                    @if(request()->routeIs('login'))           ورود به حساب
+                    @elseif(request()->routeIs('register'))    ایجاد حساب جدید
+                    @elseif(request()->routeIs('password.request')) بازیابی رمز عبور
+                    @elseif(request()->routeIs('password.reset'))   تعیین رمز جدید
+                    @endif
+                </div>
+            </div>
         </div>
 
-        {{-- تب‌های ورود / ثبت‌نام (فقط در صفحات login/register) --}}
-        @if(request()->routeIs('login') || request()->routeIs('register'))
-        <div class="auth-tabs">
-            <a href="{{ route('login') }}"    class="auth-tab {{ request()->routeIs('login')    ? 'active':'' }}">ورود</a>
-            <a href="{{ route('register') }}" class="auth-tab {{ request()->routeIs('register') ? 'active':'' }}">ثبت‌نام</a>
-        </div>
-        @endif
+        <div class="auth-divider"></div>
 
-        {{-- محتوای صفحه --}}
         {{ $slot }}
 
     </div>

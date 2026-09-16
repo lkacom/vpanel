@@ -35,7 +35,7 @@
                     <li class="nav-item"><a class="nav-link" href="#pricing">پلن‌ها</a></li>
                     <li class="nav-item"><a class="nav-link" href="#faq">سوالات</a></li>
                 </ul>
-                <a href="{{ Auth::check() ? route('dashboard') : route('register') }}" class="btn btn-fire btn-sm">ورود / ثبت‌نام</a>
+                <a href="{{ Auth::check() ? route('dashboard') : route('login') }}" class="btn btn-fire btn-sm">ورود / ثبت‌نام</a>
             </div>
         </div>
     </nav>
