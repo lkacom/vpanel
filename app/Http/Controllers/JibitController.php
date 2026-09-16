@@ -101,7 +101,7 @@ class JibitController extends Controller
             : (int) $order->amount;
 
         try {
-            $result = $this::jibit->verify($authority, $amount);
+            $result = $this->jibit->verify($authority, $amount);
 
             // ذخیره ref_id
             $order->update([
