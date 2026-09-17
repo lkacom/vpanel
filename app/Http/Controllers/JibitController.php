@@ -8,6 +8,7 @@ use App\Services\JibitService;
 use App\Traits\CompletesOrder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
@@ -85,7 +86,7 @@ class JibitController extends Controller
      * - clientReferenceNumber: مرجع کلاینت
      * - amount, wage, currency, pspReferenceNumber, pspRRN, payerMaskedCardNumber, pspName, pspTerminalId, pspHashedCardNumber, failReason
      */
-    public function callback(Request $request): RedirectResponse
+    public function callback(Request $request): RedirectResponse|View
     {
         // جیبیت callback را با POST و application/x-www-form-urlencoded ارسال می‌کند
         $purchaseId = $request->input('purchaseId');
