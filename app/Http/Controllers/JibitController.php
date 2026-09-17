@@ -54,8 +54,9 @@ class JibitController extends Controller
                 amount:      $amountRial,
                 description: $description,
                 nationalCode: auth()->user()->national_code ?? null,
-                mobile:      auth()->user()->phone ?? null,
+                mobile:       auth()->user()->phone ?? null,
                 email:       auth()->user()->email ?? null,
+                callbackUrl: $request->getSchemeAndHttpHost() . route('payment.jibit.callback', absolute: false),
             );
 
             // purchaseId را در jibit_authority ذخیره می‌کنیم

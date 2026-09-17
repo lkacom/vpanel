@@ -184,7 +184,7 @@ class JibitService
      * @param string|null $email        ایمیل پرداخت‌کننده
      * @return array{purchaseId: string, authority: string, redirect_url: string}
      */
-    public function request(int $amount, string $description = '', ?string $nationalCode = null, ?string $mobile = null, ?string $email = null): array
+    public function request(int $amount, string $description = '', ?string $nationalCode = null, ?string $mobile = null, ?string $email = null, ?string $callbackUrl = null): array
     {
         if (! $this->isEnabled()) {
             throw new RuntimeException('درگاه جیبیت فعال نیست یا پیکربندی اتصال نشده است.');
@@ -194,7 +194,9 @@ class JibitService
             throw new RuntimeException('مبلغ پرداخت باید حداقل ۵۰۰۰ ریال باشد.');
         }
 
-        $callbackUrl = route('payment.jibit.callback');
+        // از host واقعی همان درخواست استفاده می‌کنیم تا localhost و
+        // 127.0.0.1 باعث از دست رفتن cookie/session کاربر نشوند.
+        $callbackUrl = $callbackUrl ?: route('payment.jibit.callback');
 
         $settings    = Setting::all()->pluck('value', 'key');
         $description = $description ?: (string) ($settings->get('jibit_gateway_name') ?? 'پرداخت آنلاین — جیبیت');
