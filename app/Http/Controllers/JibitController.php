@@ -20,7 +20,7 @@ class JibitController extends Controller
     }
 
     /**
-     * شروع پرداخت — ساخت authority و redirect به درگاه جیبیت.
+     * شروع پرداخت — ساخت purchase و redirect به درگاه جیبیت.
      */
     public function initiate(Request $request, Order $order): RedirectResponse
     {
@@ -33,14 +33,17 @@ class JibitController extends Controller
                 ->with('status', 'این سفارش قبلاً پرداخت شده است.');
         }
 
-        $amount = $order->plan_id
+        // مبلغ در دیتابیس به تومان ذخیره شده، تبدیل به ریال برای جیبیت
+        $amountToman = $order->plan_id
             ? (int) optional($order->plan)->price
             : (int) $order->amount;
 
-        if ($amount <= 0) {
+        if ($amountToman <= 0) {
             return redirect()->route('order.show', $order->id)
                 ->with('error', 'مبلغ سفارش نامعتبر است.');
         }
+
+        $amountRial = $amountToman * 10; // جیبیت با ریال کار می‌کند
 
         $description = $order->plan_id
             ? 'پرداخت سفارش #' . $order->id . ' — ' . optional($order->plan)->name
@@ -48,15 +51,16 @@ class JibitController extends Controller
 
         try {
             $result = $this->jibit->request(
-                amount:      $amount,
+                amount:      $amountRial,
                 description: $description,
                 nationalCode: auth()->user()->national_code ?? null,
                 mobile:      auth()->user()->phone ?? null,
                 email:       auth()->user()->email ?? null,
             );
 
+            // purchaseId را در jibit_authority ذخیره می‌کنیم
             $order->update([
-                'jibit_authority' => $result['authority'],
+                'jibit_authority' => $result['purchaseId'],
             ]);
 
             return redirect()->away($result['redirect_url']);
@@ -72,22 +76,39 @@ class JibitController extends Controller
     }
 
     /**
-     * Callback از جیبیت — تأیید، ذخیره ref_id و تکمیل سفارش.
+     * Callback از جیبیت (POST) — تأیید، ذخیره ref_id و تکمیل سفارش.
+     *
+     * پارامترهای POST از جیبیت:
+     * - purchaseId: شناسه خرید
+     * - status: SUCCESSFUL | FAILED | UNKNOWN
+     * - clientReferenceNumber: مرجع کلاینت
+     * - amount, wage, currency, pspReferenceNumber, pspRRN, payerMaskedCardNumber, pspName, pspTerminalId, pspHashedCardNumber, failReason
      */
     public function callback(Request $request): RedirectResponse
     {
-        $authority = $request->query('Authority');
-        $status    = $request->query('Status', 'NOK');
+        // جیبیت callback را با POST و application/x-www-form-urlencoded ارسال می‌کند
+        $purchaseId = $request->input('purchaseId');
+        $status     = $request->input('status', 'FAILED');
+        $clientRef  = $request->input('clientReferenceNumber');
 
-        if (! $authority || strtoupper($status) !== 'OK') {
+        Log::info('Jibit callback received', [
+            'purchaseId' => $purchaseId,
+            'status'     => $status,
+            'clientRef'  => $clientRef,
+            'all'        => $request->all(),
+        ]);
+
+        if (! $purchaseId) {
+            Log::error('Jibit callback: purchaseId missing', ['request' => $request->all()]);
             return redirect()->route('dashboard')
-                ->with('error', 'پرداخت لغو شد یا با خطا مواجه شد.');
+                ->with('error', 'اطلاعات پرداخت ناقص است (purchaseId یافت نشد).');
         }
 
-        $order = Order::where('jibit_authority', $authority)->first();
+        // یافتن سفارش بر اساس purchaseId (که در jibit_authority ذخیره شده)
+        $order = Order::where('jibit_authority', $purchaseId)->first();
 
         if (! $order) {
-            Log::error('Jibit callback: order not found', ['authority' => $authority]);
+            Log::error('Jibit callback: order not found', ['purchaseId' => $purchaseId]);
             return redirect()->route('dashboard')->with('error', 'سفارش یافت نشد.');
         }
 
@@ -96,12 +117,31 @@ class JibitController extends Controller
                 ->with('status', 'این سفارش قبلاً پرداخت شده است.');
         }
 
-        $amount = $order->plan_id
+        // اگر وضعیت FAILED باشد، نیازی به verify نیست
+        if (strtoupper($status) === 'FAILED') {
+            $failReason = $request->input('failReason', 'UNKNOWN');
+            Log::warning('Jibit payment failed', [
+                'purchaseId' => $purchaseId,
+                'failReason' => $failReason,
+                'order_id'   => $order->id,
+            ]);
+            $order->update(['status' => 'failed']);
+            return view('payment.jibit-receipt', [
+                'order'     => $order,
+                'amount'    => $order->plan_id ? (int) optional($order->plan)->price : (int) $order->amount,
+                'authority' => $purchaseId,
+                'error'     => "پرداخت ناموفق بود: {$failReason}",
+            ]);
+        }
+
+        // مبلغ به ریال برای verify
+        $amountToman = $order->plan_id
             ? (int) optional($order->plan)->price
             : (int) $order->amount;
+        $amountRial = $amountToman * 10;
 
         try {
-            $result = $this->jibit->verify($authority, $amount);
+            $result = $this->jibit->verify($purchaseId, $amountRial);
 
             // ذخیره ref_id
             $order->update([
@@ -116,25 +156,26 @@ class JibitController extends Controller
             );
 
             return view('payment.jibit-receipt', [
-                'order' => $order,
-                'ref_id' => $result['ref_id'],
-                'amount' => $amount,
-                'authority' => $result['authority'],
-                'code'    => $result['code'],
+                'order'     => $order,
+                'ref_id'    => $result['ref_id'],
+                'amount'    => $amountToman,
+                'authority' => $purchaseId,
+                'code'      => $result['code'],
+                'status'    => $result['status'],
             ]);
 
         } catch (RuntimeException $e) {
             Log::error('Jibit verify failed', [
-                'authority' => $authority,
-                'order_id'  => $order->id,
-                'error'     => $e->getMessage(),
+                'purchaseId' => $purchaseId,
+                'order_id'   => $order->id,
+                'error'      => $e->getMessage(),
             ]);
             $order->update(['status' => 'failed']);
             return view('payment.jibit-receipt', [
-                'order'      => $order,
-                'amount'     => $amount,
-                'authority'  => $authority,
-                'error'      => $e->getMessage(),
+                'order'     => $order,
+                'amount'    => $amountToman,
+                'authority' => $purchaseId,
+                'error'     => $e->getMessage(),
             ]);
 
         } catch (\Exception $e) {
@@ -150,10 +191,10 @@ class JibitController extends Controller
             ]);
             $order->update(['status' => 'failed']);
             return view('payment.jibit-receipt', [
-                'order'      => $order,
-                'amount'     => $amount,
-                'authority'  => $authority,
-                'error'      => 'پرداخت موفق بود ولی در فعال‌سازی سرویس خطایی رخ داد. پشتیبانی در جریان قرار گرفت.',
+                'order'     => $order,
+                'amount'    => $amountToman,
+                'authority' => $purchaseId,
+                'error'     => 'پرداخت موفق بود ولی در فعال‌سازی سرویس خطایی رخ داد. پشتیبانی در جریان قرار گرفت.',
             ]);
         }
     }

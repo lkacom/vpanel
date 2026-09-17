@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Setting;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
@@ -15,20 +16,11 @@ class JibitService
     private bool   $sandbox;
     private bool   $isLive;
     private string $currency;
-    private array  $endpoints;
+    private string $baseUrl;
+    private string $gatewayBaseUrl;
 
-    private const ENDPOINTS = [
-        'live' => [
-            'request' => 'https://napi.jibit.ir/pg/v4/payment/request.json',
-            'verify'  => 'https://napi.jibit.ir/pg/v4/payment/verify.json',
-            'gateway' => 'https://www.jibit.com/pg/StartPay/',
-        ],
-        'sandbox' => [
-            'request' => 'https://napi.jibit.ir/sandbox/pg/v4/payment/request.json',
-            'verify'  => 'https://napi.jibit.ir/sandbox/pg/v4/payment/verify.json',
-            'gateway' => 'https://www.jibit.com/sandbox/pg/StartPay/',
-        ],
-    ];
+    private const TOKEN_CACHE_KEY = 'jibit_access_token';
+    private const REFRESH_TOKEN_CACHE_KEY = 'jibit_refresh_token';
 
     public function __construct()
     {
@@ -38,9 +30,12 @@ class JibitService
         $this->apiKey     = (string) ($settings->get('jibit_api_key') ?? '');
         $this->secretKey  = (string) ($settings->get('jibit_secret_key') ?? '');
         $this->sandbox    = filter_var($settings->get('jibit_sandbox') ?? false, FILTER_VALIDATE_BOOLEAN);
-        $this->currency   = (string) ($settings->get('jibit_currency') ?? 'IRT');
+        $this->currency   = (string) ($settings->get('jibit_currency') ?? 'IRR');
         $this->isLive     = ! $this->sandbox;
-        $this->endpoints  = self::ENDPOINTS[$this->isLive ? 'live' : 'sandbox'];
+
+        $env = $this->isLive ? '' : 'sandbox/';
+        $this->baseUrl        = "https://napi.jibit.ir/{$env}ppg/v3";
+        $this->gatewayBaseUrl = "https://napi.jibit.ir/{$env}ppg/v3";
     }
 
     public function isEnabled(): bool
@@ -59,14 +54,115 @@ class JibitService
     }
 
     /**
-     * ایجاد درخواست پرداخت جیبیت.
+     * دریافت Access Token (با کش ۲۳ ساعته برای اطمینان از انقضا قبل از نیاز).
+     */
+    private function getAccessToken(): string
+    {
+        $cached = Cache::get(self::TOKEN_CACHE_KEY);
+        if ($cached) {
+            return $cached;
+        }
+
+        // اگر توکن در کش نیست، سعی در رفرش با refresh token کنیم
+        $refreshToken = Cache::get(self::REFRESH_TOKEN_CACHE_KEY);
+        if ($refreshToken) {
+            try {
+                return $this->refreshAccessToken($refreshToken);
+            } catch (\Throwable $e) {
+                Log::warning('Jibit refresh token failed, generating new token', [
+                    'error' => $e->getMessage(),
+                ]);
+                // refresh token هم منقضی شده، توکن جدید بگیر
+            }
+        }
+
+        // دریافت توکن جدید با apiKey/secretKey
+        return $this->generateNewToken();
+    }
+
+    /**
+     * تولید توکن جدید با apiKey/secretKey.
+     */
+    private function generateNewToken(): string
+    {
+        $url = "{$this->baseUrl}/tokens/generate";
+
+        $response = $this->httpClient()->post($url, [
+            'apiKey'    => $this->apiKey,
+            'secretKey' => $this->secretKey,
+        ]);
+
+        $this->checkHttpResponse($response, 'generate token');
+
+        $data = $response->json();
+        $accessToken  = $data['accessToken'] ?? null;
+        $refreshToken = $data['refreshToken'] ?? null;
+        $expiresIn    = $data['accessTokenExpireDateTime'] ?? null;
+
+        if (! $accessToken) {
+            throw new RuntimeException('جیبیت: دریافت توکن دسترسی ناموفق بود');
+        }
+
+        // کش کردن توکن‌ها (access token برای ۲۳ ساعت، refresh token برای ۴۷ ساعت)
+        if ($expiresIn) {
+            $ttl = max(1, (int) ((strtotime($expiresIn) - time()) / 60) - 60); // ۱ ساعت قبل از انقضا
+            Cache::put(self::TOKEN_CACHE_KEY, $accessToken, $ttl);
+        } else {
+            Cache::put(self::TOKEN_CACHE_KEY, $accessToken, 1380); // ۲۳ ساعت پیش‌فرض
+        }
+
+        if ($refreshToken) {
+            Cache::put(self::REFRESH_TOKEN_CACHE_KEY, $refreshToken, 2820); // ۴۷ ساعت
+        }
+
+        return $accessToken;
+    }
+
+    /**
+     * رفرش توکن دسترسی با refresh token.
+     */
+    private function refreshAccessToken(string $refreshToken): string
+    {
+        $url = "{$this->baseUrl}/tokens/refresh";
+
+        $response = $this->httpClient()->post($url, [
+            'refreshToken' => $refreshToken,
+        ]);
+
+        $this->checkHttpResponse($response, 'refresh token');
+
+        $data = $response->json();
+        $accessToken  = $data['accessToken'] ?? null;
+        $newRefreshToken = $data['refreshToken'] ?? null;
+        $expiresIn    = $data['accessTokenExpireDateTime'] ?? null;
+
+        if (! $accessToken) {
+            throw new RuntimeException('جیبیت: رفرش توکن ناموفق بود');
+        }
+
+        if ($expiresIn) {
+            $ttl = max(1, (int) ((strtotime($expiresIn) - time()) / 60) - 60);
+            Cache::put(self::TOKEN_CACHE_KEY, $accessToken, $ttl);
+        } else {
+            Cache::put(self::TOKEN_CACHE_KEY, $accessToken, 1380);
+        }
+
+        if ($newRefreshToken) {
+            Cache::put(self::REFRESH_TOKEN_CACHE_KEY, $newRefreshToken, 2820);
+        }
+
+        return $accessToken;
+    }
+
+    /**
+     * ایجاد درخواست پرداخت (Create Purchase).
      *
-     * @param int    $amount        مبلغ پرداخت به تومان
+     * @param int    $amount        مبلغ به ریال (IRR)
      * @param string $description   توصیف پرداخت
      * @param string|null $nationalCode کد ملی پرداخت‌کننده
      * @param string|null $mobile       موبایل پرداخت‌کننده
      * @param string|null $email        ایمیل پرداخت‌کننده
-     * @return array{authority: string, redirect_url: string}
+     * @return array{purchaseId: string, authority: string, redirect_url: string}
      */
     public function request(int $amount, string $description = '', ?string $nationalCode = null, ?string $mobile = null, ?string $email = null): array
     {
@@ -74,129 +170,174 @@ class JibitService
             throw new RuntimeException('درگاه جیبیت فعال نیست یا پیکربندی اتصال نشده است.');
         }
 
+        if ($amount < 5000) {
+            throw new RuntimeException('مبلغ پرداخت باید حداقل ۵۰۰۰ ریال باشد.');
+        }
+
         $callbackUrl = route('payment.jibit.callback');
 
         $settings    = Setting::all()->pluck('value', 'key');
         $description = $description ?: (string) ($settings->get('jibit_gateway_name') ?? 'پرداخت آنلاین — جیبیت');
+        $clientRef   = 'order_' . uniqid(); // مرجع منحصر به فرد برای هر تراکنش
 
         $body = [
             'amount'              => $amount,
-            'currency'            => $this->isLive() ? $this->currency : 'IRT',
+            'currency'            => 'IRR',
             'callbackUrl'         => $callbackUrl,
-            'clientReferenceNumber' => $this->apiKey,
-            'userIdentifier'      => $this->apiKey,
+            'clientReferenceNumber' => $clientRef,
+            'userIdentifier'      => $this->apiKey, // یا شناسه کاربر
             'description'         => $description,
-            'payerNationalCode'   => $nationalCode,
-            'payerMobileNumber'   => $mobile,
-            'additionalData'      => [
-                'email' => $email,
-            ],
+            'wage'                => 0, // کارمزد درگاه (اختیاری)
         ];
 
-        $response = $this->post($this->endpoints['request'], $body);
-        $statusCode = $response->getStatusCode();
-        $rawContent = $this->extractRawContent($response);
-
-        Log::debug('Jibit request response', [
-            'endpoint' => $this->endpoints['request'],
-            'body'     => $body,
-            'status'   => $statusCode,
-            'headers'  => $this->getResponseHeaders($response),
-            'content'  => $rawContent,
-        ]);
-
-        // بررسی کد وضعیت HTTP
-        if ($statusCode >= 400) {
-            $code = 'http_' . $statusCode;
-            $msg  = 'خطای HTTP از سرور جیبیت';
-            Log::error('Jibit request failed (HTTP error)', [
-                'endpoint' => $this->endpoints['request'],
-                'body'     => $body,
-                'status'   => $statusCode,
-                'content'  => $rawContent,
-            ]);
-            throw new RuntimeException("جیبیت: {$msg} (کد: {$code})");
+        if ($nationalCode) {
+            $body['payerNationalCode'] = $nationalCode;
         }
+        if ($mobile) {
+            $body['payerMobileNumber'] = $mobile;
+        }
+        if ($email) {
+            $body['additionalData'] = ['email' => $email];
+        }
+
+        $accessToken = $this->getAccessToken();
+
+        $response = $this->httpClient()
+            ->withToken($accessToken)
+            ->post("{$this->baseUrl}/purchases", $body);
+
+        $this->checkHttpResponse($response, 'create purchase');
 
         $data = $response->json();
 
-        // اطمینان از اینکه پاسخ JSON معتبر آرایه است
-        if (! is_array($data)) {
-            Log::error('Jibit request failed (invalid JSON response)', [
-                'endpoint' => $this->endpoints['request'],
-                'body'     => $body,
-                'status'   => $statusCode,
-                'content'  => $rawContent,
-            ]);
-            throw new RuntimeException('جیبیت: پاسخ نامعتبر از سرور (JSON معتبر نیست)');
-        }
+        Log::debug('Jibit create purchase response', [
+            'body'   => $body,
+            'status' => $response->getStatusCode(),
+            'data'   => $data,
+        ]);
 
-        $authority = $this->extractAuthority($data);
+        $purchaseId = $data['purchaseId'] ?? $data['purchaseIdStr'] ?? null;
+        $pspSwitchingUrl = $data['pspSwitchingUrl'] ?? null;
 
-        if ($authority === null) {
+        if (! $purchaseId || ! $pspSwitchingUrl) {
             $code = $this->extractErrorCode($data);
             $msg  = $this->extractErrorMessage($data);
-            Log::error('Jibit request failed', [
-                'endpoint' => $this->endpoints['request'],
-                'body'     => $body,
-                'response' => $data,
-                'code'     => $code,
-                'msg'      => $msg,
-            ]);
             throw new RuntimeException("جیبیت: {$msg} (کد: {$code})");
         }
 
         return [
-            'authority'    => $authority,
-            'redirect_url' => $this->constructRedirectUrl($authority),
+            'purchaseId'   => (string) $purchaseId,
+            'authority'    => (string) $purchaseId, // برای سازگاری با کنترلر موجود
+            'redirect_url' => $pspSwitchingUrl,
         ];
     }
 
-    private function constructRedirectUrl(string $authority): string
+    /**
+     * تأیید پرداخت (Verify Purchase).
+     *
+     * @return array{ref_id: string, purchaseId: string, code: int, status: string}
+     */
+    public function verify(string $purchaseId, int $amount): array
     {
-        $isFullUrl = str_starts_with($authority, 'http://') || str_starts_with($authority, 'https://');
-        return $isFullUrl ? $authority : $this->endpoints['gateway'] . $authority;
+        $accessToken = $this->getAccessToken();
+
+        $response = $this->httpClient()
+            ->withToken($accessToken)
+            ->post("{$this->baseUrl}/purchases/{$purchaseId}/verify", [
+                'amount' => $amount,
+            ]);
+
+        $this->checkHttpResponse($response, 'verify purchase');
+
+        $data = $response->json();
+
+        Log::debug('Jibit verify purchase response', [
+            'purchaseId' => $purchaseId,
+            'amount'     => $amount,
+            'status'     => $response->getStatusCode(),
+            'data'       => $data,
+        ]);
+
+        $code = $data['code'] ?? $data['status'] ?? -1;
+        $status = $data['status'] ?? 'UNKNOWN';
+
+        // کدهای موفقیت: 100, 101 (مشابه زرین‌پال) یا status = SUCCESS
+        $successCodes = [100, 101];
+        $successStatuses = ['SUCCESS', 'SUCCESSFUL'];
+
+        $isSuccess = in_array($code, $successCodes) || in_array($status, $successStatuses);
+
+        if (! $isSuccess) {
+            $msg = $this->extractErrorMessage($data);
+            throw new RuntimeException("جیبیت: {$msg} (کد: {$code}, وضعیت: {$status})");
+        }
+
+        $refId = $data['refId'] ?? $data['pspReferenceNumber'] ?? $data['referenceId'] ?? '';
+
+        return [
+            'ref_id'     => (string) $refId,
+            'purchaseId' => $purchaseId,
+            'code'       => $code,
+            'status'     => $status,
+        ];
     }
 
-    private function extractAuthority(array $data): ?string
+    /**
+     * استعلام وضعیت خرید (Filter Purchase) - برای بررسی وضعیت در صورت UNKNOWN.
+     */
+    public function inquiry(string $purchaseId): array
     {
-        // ساختار اصلی: data.pspSwitchingUrl یا data.purchaseId
-        $pspSwitchingUrl = $data['data']['pspSwitchingUrl'] ?? null;
-        $purchaseId      = $data['data']['purchaseId'] ?? null;
+        $accessToken = $this->getAccessToken();
 
-        if ($pspSwitchingUrl !== null || $purchaseId !== null) {
-            return $pspSwitchingUrl ?? $purchaseId;
+        $response = $this->httpClient()
+            ->withToken($accessToken)
+            ->get("{$this->baseUrl}/purchases", [
+                'purchaseIds' => [$purchaseId],
+            ]);
+
+        $this->checkHttpResponse($response, 'inquiry purchase');
+
+        return $response->json();
+    }
+
+    /**
+     * کلاینت HTTP با تنظیمات مشترک.
+     */
+    private function httpClient()
+    {
+        $client = Http::withHeaders([
+            'Content-Type' => 'application/json',
+            'Accept'       => 'application/json',
+        ])->timeout(30);
+
+        if (app()->environment('local')) {
+            $client = $client->withOptions(['verify' => false]);
         }
 
-        // ساختار با success/status/result
-        $topKeys = ['success', 'status', 'result'];
-        foreach ($topKeys as $topKey) {
-            if (isset($data[$topKey]) && is_array($data[$topKey]) && isset($data[$topKey]['data'])) {
-                $dataFields = $data[$topKey]['data'];
-                $pspSwitchingUrl = $dataFields['pspSwitchingUrl'] ?? null;
-                $purchaseId      = $dataFields['purchaseId'] ?? null;
-                if ($pspSwitchingUrl !== null || $purchaseId !== null) {
-                    return $pspSwitchingUrl ?? $purchaseId;
-                }
-            }
-        }
+        return $client;
+    }
 
-        // ساختار سطح اول
-        if (isset($data['pspSwitchingUrl']) || isset($data['purchaseId'])) {
-            return $data['pspSwitchingUrl'] ?? $data['purchaseId'] ?? null;
-        }
+    /**
+     * بررسی پاسخ HTTP و پرتاب Exception در صورت خطا.
+     */
+    private function checkHttpResponse(\Illuminate\Http\Client\Response $response, string $action): void
+    {
+        $statusCode = $response->getStatusCode();
+        $rawContent = $this->extractRawContent($response);
 
-        // ساختار array data
-        if (isset($data['data']) && is_array($data['data']) && ! empty($data['data'])) {
-            $firstData = $data['data'][0] ?? [];
-            $pspSwitchingUrl = $firstData['pspSwitchingUrl'] ?? null;
-            $purchaseId      = $firstData['purchaseId'] ?? null;
-            if ($pspSwitchingUrl !== null || $purchaseId !== null) {
-                return $pspSwitchingUrl ?? $purchaseId;
-            }
-        }
+        if ($statusCode >= 400) {
+            $data = $response->json();
+            $code = $this->extractErrorCode($data);
+            $msg  = $this->extractErrorMessage($data);
 
-        return null;
+            Log::error("Jibit {$action} failed (HTTP {$statusCode})", [
+                'status'  => $statusCode,
+                'content' => $rawContent,
+                'data'    => $data,
+            ]);
+
+            throw new RuntimeException("جیبیت: {$msg} (کد HTTP: {$statusCode}, کد خطا: {$code})");
+        }
     }
 
     private function extractErrorCode(array $data): string
@@ -241,110 +382,6 @@ class JibitService
             return $data['message'];
         }
         return 'خطای نامشخص';
-    }
-
-    private function getResponseHeaders($response): array
-    {
-        $headersResult = $response->headers();
-
-        if (is_object($headersResult) && method_exists($headersResult, 'all')) {
-            return $headersResult->all();
-        }
-
-        if (is_array($headersResult)) {
-            return $headersResult;
-        }
-
-        if (method_exists($response, 'getHeaders')) {
-            $headersFromGetHeaders = $response->getHeaders();
-            if (is_array($headersFromGetHeaders)) {
-                return $headersFromGetHeaders;
-            }
-            return [];
-        }
-
-        return [];
-    }
-
-    /**
-     * تأیید پرداخت جیبیت.
-     *
-     * @return array{ref_id: string, authority: string, code: int}
-     */
-    public function verify(string $authority, int $amount): array
-    {
-        $response = $this->post($this->endpoints['verify'], [
-            'clientReferenceNumber' => $authority,
-            'amount'                => $amount,
-            'callbackUrl'           => route('payment.jibit.callback'),
-        ]);
-
-        $statusCode = $response->getStatusCode();
-        $rawContent = $this->extractRawContent($response);
-
-        Log::debug('Jibit verify response', [
-            'endpoint' => $this->endpoints['verify'],
-            'authority' => $authority,
-            'amount'   => $amount,
-            'status'   => $statusCode,
-            'headers'  => $this->getResponseHeaders($response),
-            'content'  => $rawContent,
-        ]);
-
-        if ($statusCode >= 400) {
-            $code = 'http_' . $statusCode;
-            $msg  = 'خطای HTTP از سرور جیبیت در تایید پرداخت';
-            Log::error('Jibit verify failed (HTTP error)', [
-                'endpoint' => $this->endpoints['verify'],
-                'authority' => $authority,
-                'amount'   => $amount,
-                'status'   => $statusCode,
-                'content'  => $rawContent,
-            ]);
-            throw new RuntimeException("جیبیت: {$msg} (کد: {$code})");
-        }
-
-        $data = $response->json();
-
-        if (! is_array($data)) {
-            Log::error('Jibit verify failed (invalid JSON response)', [
-                'endpoint' => $this->endpoints['verify'],
-                'authority' => $authority,
-                'amount'   => $amount,
-                'status'   => $statusCode,
-                'content'  => $rawContent,
-            ]);
-            throw new RuntimeException('جیبیت: پاسخ نامعتبر از سرور در تایید پرداخت (JSON معتبر نیست)');
-        }
-
-        $code = $data['data']['code'] ?? $data['data']['status'] ?? -1;
-
-        if (! in_array($code, [100, 101, 200, 201])) {
-            $msg = $this->extractErrorMessage($data);
-            throw new RuntimeException("جیبیت: {$msg} (کد: {$code})");
-        }
-
-        $refId = $data['data']['ref_id'] ?? $data['data']['reference_id'] ?? '';
-
-        return [
-            'ref_id'    => (string) $refId,
-            'authority' => $authority,
-            'code'      => $code,
-        ];
-    }
-
-    private function post(string $url, array $body): \Illuminate\Http\Client\Response
-    {
-        $client = Http::withHeaders([
-            'Content-Type' => 'application/json',
-            'Accept'       => 'application/json',
-        ])->timeout(30);
-
-        if (app()->environment('local')) {
-            $client = $client->withOptions(['verify' => false]);
-        }
-
-        return $client->post($url, $body);
     }
 
     private function extractRawContent(\Illuminate\Http\Client\Response $response): string

@@ -128,8 +128,8 @@ Route::get('/payment/zarinpal/receipt', [ZarinpalController::class, 'callback'])
 Route::get('/payment/zarinpal/callback', [ZarinpalController::class, 'callback']);  // backward compat
 // ── Jibit Payment Gateway ───────────────────────────────────────────────────
 Route::middleware('auth')->post('/payment/jibit/{order}', [JibitController::class, 'initiate'])->name('payment.jibit.initiate');
-Route::get('/payment/jibit/receipt', [JibitController::class, 'callback'])->name('payment.jibit.callback');
-Route::get('/payment/jibit/callback', [JibitController::class, 'callback']);  // backward compat
+Route::post('/payment/jibit/callback', [JibitController::class, 'callback'])->name('payment.jibit.callback')->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]);
+Route::get('/payment/jibit/receipt', [JibitController::class, 'callback']);  // backward compat for direct access
 // ────────────────────────────────────────────────────────────────────────────
 
 
