@@ -165,8 +165,6 @@ class ThemeSettings extends Page implements HasForms
                                         ->options(['IRT' => 'تومان (IRT)', 'IRR' => 'ریال (IRR)'])->default('IRT'),
                                     TextInput::make('jibit_gateway_name')->label('نام نمایشی درگاه')
                                         ->placeholder('پرداخت آنلاین — جیبیت')->maxLength(100),
-                                    Toggle::make('jibit_sandbox')->label('حالت آزمایشی (Sandbox)')
-                                        ->onColor('warning')->offColor('gray'),
                                 ])->columns(2),
                         ]),
 

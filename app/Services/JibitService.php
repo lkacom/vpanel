@@ -14,11 +14,8 @@ class JibitService
     private string $apiKey;
     private string $secretKey;
     private bool   $active;
-    private bool   $sandbox;
-    private bool   $isLive;
     private string $currency;
     private string $baseUrl;
-    private string $gatewayBaseUrl;
 
     private const TOKEN_CACHE_KEY = 'jibit_access_token';
     private const REFRESH_TOKEN_CACHE_KEY = 'jibit_refresh_token';
@@ -30,37 +27,24 @@ class JibitService
         $settings = DB::table('settings')
             ->whereIn('key', [
                 'jibit_active', 'jibit_api_key', 'jibit_secret_key',
-                'jibit_sandbox', 'jibit_currency', 'jibit_gateway_name',
+                'jibit_currency', 'jibit_gateway_name',
             ])
             ->pluck('value', 'key');
 
         $this->active     = filter_var($this->settingValue($settings->get('jibit_active')), FILTER_VALIDATE_BOOLEAN);
         $this->apiKey     = $this->settingValue($settings->get('jibit_api_key'));
         $this->secretKey  = $this->settingValue($settings->get('jibit_secret_key'));
-        $this->sandbox    = filter_var($this->settingValue($settings->get('jibit_sandbox')), FILTER_VALIDATE_BOOLEAN);
         $this->currency   = $this->settingValue($settings->get('jibit_currency')) ?: 'IRR';
-        $this->isLive     = ! $this->sandbox;
 
         // جیبیت PPG v3 در مستندات رسمی فقط همین base URL را اعلام می‌کند.
         // حالت آزمایشی با credential/environment سمت جیبیت کنترل می‌شود و
         // افزودن /sandbox به URL باعث پاسخ 404 می‌شود.
         $this->baseUrl        = 'https://napi.jibit.ir/ppg/v3';
-        $this->gatewayBaseUrl = $this->baseUrl;
     }
 
     public function isEnabled(): bool
     {
         return $this->active && ! empty($this->apiKey) && ! empty($this->secretKey);
-    }
-
-    public function isSandbox(): bool
-    {
-        return $this->sandbox;
-    }
-
-    public function isLive(): bool
-    {
-        return $this->isLive;
     }
 
     private function settingValue(mixed $value): string
