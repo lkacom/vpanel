@@ -122,8 +122,13 @@ class JibitController extends Controller
         }
 
         if ($order->status === 'paid') {
-            return redirect()->route('dashboard')
-                ->with('status', 'این سفارش قبلاً پرداخت شده است.');
+            return view('payment.jibit-cancelled', [
+                'order'  => $order,
+                'amount' => $order->plan_id
+                    ? (int) optional($order->plan)->price
+                    : (int) $order->amount,
+                'error'  => 'این سفارش قبلاً تعیین تکلیف شده است و امکان پرداخت مجدد ندارد.',
+            ]);
         }
 
         // callback لغو/ناموفق ممکن است بدون session کاربر و با GET برگردد.
