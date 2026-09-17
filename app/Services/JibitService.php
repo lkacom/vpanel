@@ -208,7 +208,8 @@ class JibitService
 
         $this->checkHttpResponse($response, 'create purchase');
 
-        $data = $response->json();
+        $decoded = $response->json();
+        $data = is_array($decoded) ? $decoded : [];
 
         Log::debug('Jibit create purchase response', [
             'body'   => $body,
@@ -216,8 +217,9 @@ class JibitService
             'data'   => $data,
         ]);
 
-        $purchaseId = $data['purchaseId'] ?? $data['purchaseIdStr'] ?? null;
-        $pspSwitchingUrl = $data['pspSwitchingUrl'] ?? null;
+        $payload = is_array($data['data'] ?? null) ? $data['data'] : $data;
+        $purchaseId = $payload['purchaseId'] ?? $payload['purchaseIdStr'] ?? null;
+        $pspSwitchingUrl = $payload['pspSwitchingUrl'] ?? null;
 
         if (! $purchaseId || ! $pspSwitchingUrl) {
             $code = $this->extractErrorCode($data);
@@ -249,7 +251,8 @@ class JibitService
 
         $this->checkHttpResponse($response, 'verify purchase');
 
-        $data = $response->json();
+        $decoded = $response->json();
+        $data = is_array($decoded) ? $decoded : [];
 
         Log::debug('Jibit verify purchase response', [
             'purchaseId' => $purchaseId,
@@ -258,21 +261,23 @@ class JibitService
             'data'       => $data,
         ]);
 
-        $code = $data['code'] ?? $data['status'] ?? -1;
-        $status = $data['status'] ?? 'UNKNOWN';
+        $payload = is_array($data['data'] ?? null) ? $data['data'] : $data;
+        $code = $payload['code'] ?? $payload['status'] ?? -1;
+        $status = strtoupper((string) ($payload['status'] ?? 'UNKNOWN'));
 
         // کدهای موفقیت: 100, 101 (مشابه زرین‌پال) یا status = SUCCESS
         $successCodes = [100, 101];
         $successStatuses = ['SUCCESS', 'SUCCESSFUL'];
 
-        $isSuccess = in_array($code, $successCodes) || in_array($status, $successStatuses);
+        $isSuccess = in_array((string) $code, array_map('strval', $successCodes), true)
+            || in_array($status, $successStatuses, true);
 
         if (! $isSuccess) {
             $msg = $this->extractErrorMessage($data);
             throw new RuntimeException("جیبیت: {$msg} (کد: {$code}, وضعیت: {$status})");
         }
 
-        $refId = $data['refId'] ?? $data['pspReferenceNumber'] ?? $data['referenceId'] ?? '';
+        $refId = $payload['refId'] ?? $payload['pspReferenceNumber'] ?? $payload['referenceId'] ?? '';
 
         return [
             'ref_id'     => (string) $refId,
@@ -297,7 +302,8 @@ class JibitService
 
         $this->checkHttpResponse($response, 'inquiry purchase');
 
-        return $response->json();
+        $data = $response->json();
+        return is_array($data) ? $data : [];
     }
 
     /**
@@ -326,9 +332,12 @@ class JibitService
         $rawContent = $this->extractRawContent($response);
 
         if ($statusCode >= 400) {
-            $data = $response->json();
+            // جیبیت در برخی خطاها بدنه خالی، text/plain یا JSON نامعتبر برمی‌گرداند.
+            // Response::json() در این حالت null است و نباید به متدهای array داده شود.
+            $decoded = $response->json();
+            $data = is_array($decoded) ? $decoded : [];
             $code = $this->extractErrorCode($data);
-            $msg  = $this->extractErrorMessage($data);
+            $msg  = $this->extractErrorMessage($data, $rawContent);
 
             Log::error("Jibit {$action} failed (HTTP {$statusCode})", [
                 'status'  => $statusCode,
@@ -340,8 +349,10 @@ class JibitService
         }
     }
 
-    private function extractErrorCode(array $data): string
+    private function extractErrorCode(?array $data): string
     {
+        $data ??= [];
+
         if (isset($data['errors']) && is_array($data['errors'])) {
             foreach ($data['errors'] as $error) {
                 if (is_array($error) && isset($error['code'])) {
@@ -362,8 +373,10 @@ class JibitService
         return 'unknown';
     }
 
-    private function extractErrorMessage(array $data): string
+    private function extractErrorMessage(?array $data, string $rawContent = ''): string
     {
+        $data ??= [];
+
         if (isset($data['errors']) && is_array($data['errors'])) {
             foreach ($data['errors'] as $error) {
                 if (is_array($error) && isset($error['message'])) {
@@ -381,6 +394,12 @@ class JibitService
         if (isset($data['message'])) {
             return $data['message'];
         }
+
+        $rawContent = trim($rawContent);
+        if ($rawContent !== '' && ! str_starts_with($rawContent, '<')) {
+            return mb_substr($rawContent, 0, 300);
+        }
+
         return 'خطای نامشخص';
     }
 
