@@ -29,11 +29,6 @@
             <a href="{{ route('home') }}" class="inline-block rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2">
                 بازگشت به سایت
             </a>
-            @if (auth()->check())
-                <a href="{{ route('dashboard') }}" class="inline-block rounded-lg border border-gray-300 dark:border-gray-600 px-5 py-2 text-gray-700 dark:text-gray-200">
-                    داشبورد کاربری
-                </a>
-            @endif
         </div>
     </main>
 </body>

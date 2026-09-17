@@ -128,7 +128,11 @@ Route::get('/payment/zarinpal/receipt', [ZarinpalController::class, 'callback'])
 Route::get('/payment/zarinpal/callback', [ZarinpalController::class, 'callback']);  // backward compat
 // ── Jibit Payment Gateway ───────────────────────────────────────────────────
 Route::middleware('auth')->post('/payment/jibit/{order}', [JibitController::class, 'initiate'])->name('payment.jibit.initiate');
-Route::match(['get', 'post'], '/payment/jibit/callback', [JibitController::class, 'callback'])->name('payment.jibit.callback');
+Route::any('/payment/jibit/callback', [JibitController::class, 'callback'])
+    ->name('payment.jibit.callback')
+    ->withoutMiddleware(['auth']);
+Route::any('/payment/jibit/receipt', [JibitController::class, 'callback'])
+    ->withoutMiddleware(['auth']); // سازگاری با خریدهایی که callback قدیمی دارند
 // ────────────────────────────────────────────────────────────────────────────
 
 
