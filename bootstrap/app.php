@@ -13,6 +13,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->validateCsrfTokens(except: [
             'webhooks/*',  // وبهوک‌های سرویس‌های پرداخت از CSRF معاف هستند
+            'payment/jibit/callback', // بازگشت جیبیت ممکن است با GET یا POST انجام شود
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

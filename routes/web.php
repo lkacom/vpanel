@@ -128,11 +128,9 @@ Route::get('/payment/zarinpal/receipt', [ZarinpalController::class, 'callback'])
 Route::get('/payment/zarinpal/callback', [ZarinpalController::class, 'callback']);  // backward compat
 // ── Jibit Payment Gateway ───────────────────────────────────────────────────
 Route::middleware('auth')->post('/payment/jibit/{order}', [JibitController::class, 'initiate'])->name('payment.jibit.initiate');
-Route::post('/payment/jibit/callback', [JibitController::class, 'callback'])->name('payment.jibit.callback')->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]);
-Route::get('/payment/jibit/receipt', [JibitController::class, 'callback']);  // backward compat for direct access
+Route::match(['get', 'post'], '/payment/jibit/callback', [JibitController::class, 'callback'])->name('payment.jibit.callback');
 // ────────────────────────────────────────────────────────────────────────────
 
 
 /* BREEZE AUTHENTICATION */
 require __DIR__.'/auth.php';
-
