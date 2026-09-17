@@ -1,7 +1,11 @@
 @php
     use App\Models\Setting;
 
-    $storedLogo = Setting::where('key', 'site_logo')->value('value');
+    $storedLogo = Setting::where('key', 'login_logo')->value('value');
+    // سازگاری با نصب‌های قبلی که لوگوی ورود را با site_logo ذخیره کرده‌اند.
+    if (!$storedLogo) {
+        $storedLogo = Setting::where('key', 'site_logo')->value('value');
+    }
     // مقدار FileUpload ممکن است بسته به نسخه Filament به‌صورت آرایه ذخیره شود.
     if (is_array($storedLogo)) {
         $storedLogo = array_values($storedLogo)[0] ?? null;

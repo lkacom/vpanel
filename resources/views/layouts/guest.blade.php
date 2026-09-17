@@ -8,7 +8,7 @@
     @php
         $s         = \App\Models\Setting::all()->pluck('value','key');
         $brandName = $s->get('login_brand_name') ?: config('app.name', 'VPanel');
-        $stored    = $s->get('site_logo');
+        $stored    = $s->get('login_logo') ?: $s->get('site_logo');
         if (is_array($stored)) {
             $stored = array_values($stored)[0] ?? null;
         }

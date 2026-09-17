@@ -38,12 +38,16 @@ class ThemeSettings extends Page implements HasForms
 
         // FileUpload با disk=public و directory=logos کار می‌کند
         // مقدار ذخیره‌شده در DB: "logos/filename.png"
-        $storedLogo = $settings['site_logo'] ?? null;
-        $settings['site_logo'] = $storedLogo ? [$storedLogo] : [];
+        // لوگوی ورود کلید مستقل دارد؛ برای نصب‌های قبلی از site_logo نیز fallback می‌گیریم.
+        $storedLogo = $settings['login_logo'] ?? ($settings['site_logo'] ?? null);
+        if (is_array($storedLogo)) {
+            $storedLogo = array_values($storedLogo)[0] ?? null;
+        }
+        $settings['login_logo'] = $storedLogo ? [$storedLogo] : [];
 
         $this->form->fill(array_merge([
             'main_theme_enabled' => true,
-            'site_logo'          => [],
+            'login_logo'         => [],
         ], $settings));
     }
 
@@ -77,6 +81,19 @@ class ThemeSettings extends Page implements HasForms
                                         ->placeholder(config('app.name', 'VPanel'))
                                         ->helperText('پیش‌فرض: نام اپلیکیشن از .env')
                                         ->maxLength(60),
+
+                                    FileUpload::make('login_logo')
+                                        ->label('لوگوی فرم ورود کاربران')
+                                        ->helperText('لوگوی جدید را انتخاب کنید تا جایگزین لوگوی پیش‌فرض شود. لوگوی پنل ادمین تغییر نمی‌کند.')
+                                        ->image()
+                                        ->imagePreviewHeight('100')
+                                        ->maxSize(1024)
+                                        ->disk('public')
+                                        ->directory('logos')
+                                        ->visibility('public')
+                                        ->deletable(true)
+                                        ->acceptedFileTypes(['image/png', 'image/jpeg', 'image/svg+xml', 'image/webp'])
+                                        ->columnSpanFull(),
 
                                 ])->columns(1),
                         ]),
@@ -124,23 +141,6 @@ class ThemeSettings extends Page implements HasForms
                                 TextInput::make('payment_card_holder_name')->label('نام صاحب حساب'),
                                 Textarea::make('payment_card_instructions')->label('توضیحات اضافی')->rows(3),
                             ]),
-
-                            Section::make('برندینگ فرم ورود کاربران')
-                                ->description('این لوگو فقط در فرم ورود و ثبت‌نام کاربران نمایش داده می‌شود و لوگوی پنل ادمین را تغییر نمی‌دهد.')
-                                ->schema([
-                                    FileUpload::make('site_logo')
-                                        ->label('لوگوی فرم ورود کاربران')
-                                        ->helperText('پیش‌فرض: /images/logo.png — فرمت‌های PNG، JPG، SVG و WebP تا حجم ۱ مگابایت.')
-                                        ->image()
-                                        ->imagePreviewHeight('100')
-                                        ->maxSize(1024)
-                                        ->disk('public')
-                                        ->directory('logos')
-                                        ->visibility('public')
-                                        ->deletable(true)
-                                        ->acceptedFileTypes(['image/png', 'image/jpeg', 'image/svg+xml', 'image/webp'])
-                                        ->columnSpanFull(),
-                                ])->columns(1),
 
                             Section::make('درگاه زرین‌پال')
                                 ->description('تنظیمات اتصال به درگاه پرداخت زرین‌پال')
@@ -201,16 +201,16 @@ class ThemeSettings extends Page implements HasForms
 
         // ── پردازش لوگو ──
         // FileUpload با disk=public مقدار را به صورت "logos/filename.ext" برمی‌گرداند
-        $logoArray = $formData['site_logo'] ?? [];
+        $logoArray = $formData['login_logo'] ?? [];
         if (is_array($logoArray) && count($logoArray) > 0) {
             $item = array_values($logoArray)[0];
             if (is_string($item) && strlen($item) > 0) {
-                $formData['site_logo'] = $item; // مثلاً: logos/01M2K5KXV07B11SM6WK9KAPP75.png
+                $formData['login_logo'] = $item;
             } else {
-                unset($formData['site_logo']);
+                unset($formData['login_logo']);
             }
         } else {
-            $formData['site_logo'] = ''; // حذف لوگو
+            $formData['login_logo'] = ''; // حذف لوگوی سفارشی و بازگشت به پیش‌فرض
         }
 
         foreach ($formData as $key => $value) {
@@ -222,7 +222,7 @@ class ThemeSettings extends Page implements HasForms
         Cache::forget('jibit_refresh_token');
 
         // لوگو ذخیره‌شده را به public/uploads/logos کپی کن تا بدون symlink قابل دسترسی باشد
-        $savedLogo = Setting::where('key', 'site_logo')->value('value');
+        $savedLogo = Setting::where('key', 'login_logo')->value('value');
         if ($savedLogo) {
             $src = storage_path('app/public/' . $savedLogo);
             if (file_exists($src)) {
