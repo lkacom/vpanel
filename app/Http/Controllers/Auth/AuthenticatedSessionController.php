@@ -31,7 +31,10 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        return redirect()->intended(route('dashboard', absolute: false));
+        // بازگشت از درگاه ممکن است کاربر را به host متفاوتی مانند 127.0.0.1
+        // برده باشد؛ در این حالت intended می‌تواند به صفحه اصلی یا callback
+        // اشاره کند. مقصد قطعی پس از ورود، داشبورد کاربری است.
+        return redirect()->route('dashboard');
     }
 
     /**
