@@ -101,8 +101,11 @@ class JibitController extends Controller
 
         if (! $purchaseId) {
             Log::error('Jibit callback: purchaseId missing', ['request' => $request->all()]);
-            return redirect()->route('dashboard')
-                ->with('error', 'اطلاعات پرداخت ناقص است (purchaseId یافت نشد).');
+            return view('payment.jibit-cancelled', [
+                'order' => null,
+                'amount' => 0,
+                'error' => 'اطلاعات بازگشت از جیبیت ناقص است؛ پرداخت تکمیل نشد.',
+            ]);
         }
 
         // یافتن سفارش بر اساس purchaseId (که در jibit_authority ذخیره شده)
@@ -110,7 +113,11 @@ class JibitController extends Controller
 
         if (! $order) {
             Log::error('Jibit callback: order not found', ['purchaseId' => $purchaseId]);
-            return redirect()->route('dashboard')->with('error', 'سفارش یافت نشد.');
+            return view('payment.jibit-cancelled', [
+                'order' => null,
+                'amount' => 0,
+                'error' => 'سفارش مربوط به این پرداخت یافت نشد.',
+            ]);
         }
 
         if ($order->status === 'paid') {
@@ -118,20 +125,24 @@ class JibitController extends Controller
                 ->with('status', 'این سفارش قبلاً پرداخت شده است.');
         }
 
-        // اگر وضعیت FAILED باشد، نیازی به verify نیست
-        if (strtoupper($status) === 'FAILED') {
+        // callback لغو/ناموفق ممکن است بدون session کاربر و با GET برگردد.
+        // مانند زرین‌پال، برای هر وضعیتی غیر از موفق مستقیماً رسید عمومی نشان بده.
+        if (strtoupper($status) !== 'SUCCESSFUL') {
             $failReason = $request->input('failReason', 'UNKNOWN');
             Log::warning('Jibit payment failed', [
                 'purchaseId' => $purchaseId,
                 'failReason' => $failReason,
+                'status'     => $status,
                 'order_id'   => $order->id,
             ]);
             $order->update(['status' => 'failed']);
-            return view('payment.jibit-receipt', [
+            return view('payment.jibit-cancelled', [
                 'order'     => $order,
                 'amount'    => $order->plan_id ? (int) optional($order->plan)->price : (int) $order->amount,
                 'authority' => $purchaseId,
-                'error'     => "پرداخت ناموفق بود: {$failReason}",
+                'error'     => $failReason !== 'UNKNOWN'
+                    ? "پرداخت لغو یا ناموفق شد: {$failReason}"
+                    : 'پرداخت توسط کاربر لغو شد یا درگاه تراکنش را تکمیل نکرد.',
             ]);
         }
 
