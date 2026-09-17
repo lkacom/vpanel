@@ -9,6 +9,9 @@
         $s         = \App\Models\Setting::all()->pluck('value','key');
         $brandName = $s->get('login_brand_name') ?: config('app.name', 'VPanel');
         $stored    = $s->get('site_logo');
+        if (is_array($stored)) {
+            $stored = array_values($stored)[0] ?? null;
+        }
         if ($stored) {
             $abs  = storage_path('app/public/' . $stored);
             $dest = public_path('uploads/logos/' . basename($stored));
@@ -16,7 +19,7 @@
                 $dir = public_path('uploads/logos');
                 if (!is_dir($dir)) mkdir($dir, 0755, true);
                 if (!file_exists($dest) || filemtime($abs) > filemtime($dest)) copy($abs, $dest);
-                $logoUrl = asset('uploads/logos/' . basename($stored));
+                $logoUrl = asset('uploads/logos/' . basename($stored)) . '?v=' . filemtime($dest);
             } else { $logoUrl = asset('images/logo.png'); }
         } else { $logoUrl = asset('images/logo.png'); }
     @endphp
@@ -55,7 +58,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 1.5rem 1rem;
+            padding: 2rem 1rem;
             background: #f0f4ff;
             position: relative;
             overflow: hidden;
@@ -82,11 +85,11 @@
         /* ── کارت یکپارچه ── */
         .auth-card {
             width: 100%;
-            max-width: 22rem;
+            max-width: 28rem;
             background: #ffffff;
-            border-radius: 1.5rem;
+            border-radius: 1rem;
             box-shadow: 0 8px 40px rgba(37,99,235,.13), 0 2px 8px rgba(0,0,0,.06);
-            padding: 2.5rem 2rem 2rem;
+            padding: 2.5rem;
             position: relative;
             z-index: 1;
         }
@@ -237,6 +240,19 @@
             color: var(--blue-600); text-decoration: none; font-weight: 600; margin-right: .2rem;
         }
         .auth-footer-link a:hover { text-decoration: underline; }
+
+        /* اندازه‌های فرم با پنل ادمین هم‌راستا است و در موبایل بدون اسکرول افقی می‌ماند. */
+        @media (max-width: 640px) {
+            body { padding: 1rem .75rem; }
+            .auth-card {
+                max-width: 100%;
+                border-radius: .875rem;
+                padding: 1.75rem 1.25rem 1.5rem;
+            }
+            .auth-header { margin-bottom: 1.5rem; }
+            .auth-logo-ring { width: 68px; height: 68px; }
+            .auth-logo { max-width: 50px; max-height: 50px; }
+        }
     </style>
 </head>
 

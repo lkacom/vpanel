@@ -78,18 +78,6 @@ class ThemeSettings extends Page implements HasForms
                                         ->helperText('پیش‌فرض: نام اپلیکیشن از .env')
                                         ->maxLength(60),
 
-                                    FileUpload::make('site_logo')
-                                        ->label('لوگوی فرم ورود')
-                                        ->helperText('پیش‌فرض: /images/logo.png — لوگوی پنل ادمین تغییر نمی‌کند.')
-                                        ->image()
-                                        ->imagePreviewHeight('100')
-                                        ->maxSize(1024)
-                                        ->disk('public')
-                                        ->directory('logos')
-                                        ->visibility('public')
-                                        ->deletable(true)
-                                        ->acceptedFileTypes(['image/png', 'image/jpeg', 'image/svg+xml', 'image/webp'])
-                                        ->columnSpanFull(),
                                 ])->columns(1),
                         ]),
 
@@ -136,6 +124,23 @@ class ThemeSettings extends Page implements HasForms
                                 TextInput::make('payment_card_holder_name')->label('نام صاحب حساب'),
                                 Textarea::make('payment_card_instructions')->label('توضیحات اضافی')->rows(3),
                             ]),
+
+                            Section::make('برندینگ فرم ورود کاربران')
+                                ->description('این لوگو فقط در فرم ورود و ثبت‌نام کاربران نمایش داده می‌شود و لوگوی پنل ادمین را تغییر نمی‌دهد.')
+                                ->schema([
+                                    FileUpload::make('site_logo')
+                                        ->label('لوگوی فرم ورود کاربران')
+                                        ->helperText('پیش‌فرض: /images/logo.png — فرمت‌های PNG، JPG، SVG و WebP تا حجم ۱ مگابایت.')
+                                        ->image()
+                                        ->imagePreviewHeight('100')
+                                        ->maxSize(1024)
+                                        ->disk('public')
+                                        ->directory('logos')
+                                        ->visibility('public')
+                                        ->deletable(true)
+                                        ->acceptedFileTypes(['image/png', 'image/jpeg', 'image/svg+xml', 'image/webp'])
+                                        ->columnSpanFull(),
+                                ])->columns(1),
 
                             Section::make('درگاه زرین‌پال')
                                 ->description('تنظیمات اتصال به درگاه پرداخت زرین‌پال')

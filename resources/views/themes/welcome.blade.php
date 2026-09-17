@@ -2,11 +2,15 @@
     use App\Models\Setting;
 
     $storedLogo = Setting::where('key', 'site_logo')->value('value');
+    // مقدار FileUpload ممکن است بسته به نسخه Filament به‌صورت آرایه ذخیره شود.
+    if (is_array($storedLogo)) {
+        $storedLogo = array_values($storedLogo)[0] ?? null;
+    }
 
     if ($storedLogo) {
         // ابتدا symlink را چک کن (php artisan storage:link)
         if (file_exists(public_path('storage/' . $storedLogo))) {
-            $logoUrl = asset('storage/' . $storedLogo);
+            $logoUrl = asset('storage/' . $storedLogo) . '?v=' . filemtime(public_path('storage/' . $storedLogo));
         // بعد مستقیم از storage/app/public چک کن
         } elseif (file_exists(storage_path('app/public/' . $storedLogo))) {
             // fallback: فایل را به public کپی کن (یک‌بار)
@@ -14,10 +18,9 @@
             if (!is_dir($destDir)) mkdir($destDir, 0755, true);
             $filename = basename($storedLogo);
             $destPath = $destDir . '/' . $filename;
-            if (!file_exists($destPath)) {
-                copy(storage_path('app/public/' . $storedLogo), $destPath);
-            }
-            $logoUrl = asset('uploads/logos/' . $filename);
+            // لوگو را هر بار همگام کن تا آپلود جدید با همان نام هم اعمال شود.
+            copy(storage_path('app/public/' . $storedLogo), $destPath);
+            $logoUrl = asset('uploads/logos/' . $filename) . '?v=' . filemtime($destPath);
         } else {
             $logoUrl = asset('images/logo.png');
         }
