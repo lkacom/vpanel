@@ -33,9 +33,11 @@ class JibitService
         $this->currency   = (string) ($settings->get('jibit_currency') ?? 'IRR');
         $this->isLive     = ! $this->sandbox;
 
-        $env = $this->isLive ? '' : 'sandbox/';
-        $this->baseUrl        = "https://napi.jibit.ir/{$env}ppg/v3";
-        $this->gatewayBaseUrl = "https://napi.jibit.ir/{$env}ppg/v3";
+        // جیبیت PPG v3 در مستندات رسمی فقط همین base URL را اعلام می‌کند.
+        // حالت آزمایشی با credential/environment سمت جیبیت کنترل می‌شود و
+        // افزودن /sandbox به URL باعث پاسخ 404 می‌شود.
+        $this->baseUrl        = 'https://napi.jibit.ir/ppg/v3';
+        $this->gatewayBaseUrl = $this->baseUrl;
     }
 
     public function isEnabled(): bool
@@ -85,7 +87,7 @@ class JibitService
      */
     private function generateNewToken(): string
     {
-        $url = "{$this->baseUrl}/tokens/generate";
+        $url = "{$this->baseUrl}/tokens";
 
         $response = $this->httpClient()->post($url, [
             'apiKey'    => $this->apiKey,
@@ -126,6 +128,7 @@ class JibitService
         $url = "{$this->baseUrl}/tokens/refresh";
 
         $response = $this->httpClient()->post($url, [
+            'accessToken'  => (string) Cache::get(self::TOKEN_CACHE_KEY, ''),
             'refreshToken' => $refreshToken,
         ]);
 
