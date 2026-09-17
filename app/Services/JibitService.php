@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Setting;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
@@ -24,13 +25,20 @@ class JibitService
 
     public function __construct()
     {
-        $settings = Setting::all()->pluck('value', 'key');
+        // مقدار تنظیمات در مدل Setting به‌صورت array cast شده است، اما کلیدهای
+        // جیبیت رشته‌ای هستند. خواندن raw مانع تبدیل کلیدهای قدیمی/غیر JSON به null می‌شود.
+        $settings = DB::table('settings')
+            ->whereIn('key', [
+                'jibit_active', 'jibit_api_key', 'jibit_secret_key',
+                'jibit_sandbox', 'jibit_currency', 'jibit_gateway_name',
+            ])
+            ->pluck('value', 'key');
 
-        $this->active     = filter_var($settings->get('jibit_active') ?? false, FILTER_VALIDATE_BOOLEAN);
-        $this->apiKey     = (string) ($settings->get('jibit_api_key') ?? '');
-        $this->secretKey  = (string) ($settings->get('jibit_secret_key') ?? '');
-        $this->sandbox    = filter_var($settings->get('jibit_sandbox') ?? false, FILTER_VALIDATE_BOOLEAN);
-        $this->currency   = (string) ($settings->get('jibit_currency') ?? 'IRR');
+        $this->active     = filter_var($this->settingValue($settings->get('jibit_active')), FILTER_VALIDATE_BOOLEAN);
+        $this->apiKey     = $this->settingValue($settings->get('jibit_api_key'));
+        $this->secretKey  = $this->settingValue($settings->get('jibit_secret_key'));
+        $this->sandbox    = filter_var($this->settingValue($settings->get('jibit_sandbox')), FILTER_VALIDATE_BOOLEAN);
+        $this->currency   = $this->settingValue($settings->get('jibit_currency')) ?: 'IRR';
         $this->isLive     = ! $this->sandbox;
 
         // جیبیت PPG v3 در مستندات رسمی فقط همین base URL را اعلام می‌کند.
@@ -53,6 +61,22 @@ class JibitService
     public function isLive(): bool
     {
         return $this->isLive;
+    }
+
+    private function settingValue(mixed $value): string
+    {
+        if (is_array($value)) {
+            $value = reset($value);
+        }
+
+        if (is_string($value)) {
+            $decoded = json_decode($value, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_scalar($decoded)) {
+                $value = $decoded;
+            }
+        }
+
+        return trim((string) ($value ?? ''));
     }
 
     /**
@@ -87,6 +111,15 @@ class JibitService
      */
     private function generateNewToken(): string
     {
+        if ($this->apiKey === '' || $this->secretKey === '') {
+            throw new RuntimeException('جیبیت: کلید API یا Secret Key در تنظیمات پروژه خالی است.');
+        }
+
+        Log::debug('Jibit token request prepared', [
+            'api_key_length'    => strlen($this->apiKey),
+            'secret_key_length' => strlen($this->secretKey),
+        ]);
+
         $url = "{$this->baseUrl}/tokens";
 
         $response = $this->httpClient()->post($url, [

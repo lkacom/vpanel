@@ -215,6 +215,8 @@ class ThemeSettings extends Page implements HasForms
         }
 
         Cache::forget('settings');
+        Cache::forget('jibit_access_token');
+        Cache::forget('jibit_refresh_token');
 
         // لوگو ذخیره‌شده را به public/uploads/logos کپی کن تا بدون symlink قابل دسترسی باشد
         $savedLogo = Setting::where('key', 'site_logo')->value('value');
