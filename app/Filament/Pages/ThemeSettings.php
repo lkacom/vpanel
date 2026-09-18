@@ -74,17 +74,15 @@ class ThemeSettings extends Page implements HasForms
                                 ]),
 
                             Section::make('تنظیمات فرم ورود کاربران')
-                                ->description('این تنظیمات روی صفحات /login، /register و /forgot-password اعمال می‌شود.')
                                 ->schema([
                                     TextInput::make('login_brand_name')
                                         ->label('نام نمایشی بالای فرم')
                                         ->placeholder(config('app.name', 'VPanel'))
-                                        ->helperText('پیش‌فرض: نام اپلیکیشن از .env')
                                         ->maxLength(60),
 
                                     FileUpload::make('login_logo')
                                         ->label('لوگوی فرم ورود کاربران')
-                                        ->helperText('لوگوی جدید را انتخاب کنید تا جایگزین لوگوی پیش‌فرض شود. لوگوی پنل ادمین تغییر نمی‌کند.')
+                                        ->helperText('لوگوی جدید را انتخاب کنید تا جایگزین لوگوی پیش‌فرض شود.')
                                         ->image()
                                         ->imagePreviewHeight('100')
                                         ->maxSize(1024)
@@ -98,7 +96,7 @@ class ThemeSettings extends Page implements HasForms
                                 ])->columns(1),
                         ]),
 
-                    Tabs\Tab::make('محتوای قالب RoketVPN (موشکی)')
+                    Tabs\Tab::make('محتوای قالب ')
                         ->icon('heroicon-o-rocket-launch')
                         ->visible(fn(Get $get) => (bool) $get('main_theme_enabled'))
                         ->schema([
