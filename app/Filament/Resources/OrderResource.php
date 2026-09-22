@@ -79,6 +79,10 @@ class OrderResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn ($query) => $query
+                ->where('status', 'pending')
+                ->where('payment_method', 'card')
+            )
             ->columns([
                 ImageColumn::make('card_payment_receipt')
                     ->label('رسید')->disk('public')->toggleable()->size(60)
@@ -112,10 +116,18 @@ class OrderResource extends Resource
                 TextColumn::make('payment_method')
                     ->label('روش پرداخت')->badge()
                     ->formatStateUsing(fn ($state) => match ($state) {
-                        'wallet' => 'کیف پول', 'card' => 'کارت', 'crypto' => 'ارز دیجیتال', 'jibit' => 'جیبیت', default => 'نامشخص',
+                        'wallet'   => 'کیف پول',
+                        'card'     => 'کارت به کارت',
+                        'zarinpal' => 'زرین‌پال',
+                        'crypto'   => 'ارز دیجیتال',
+                        default    => 'نامشخص',
                     })
-                    ->color(fn (string $state): string => match ($state) {
-                        'wallet' => 'success', 'card' => 'warning', 'crypto' => 'info', 'jibit' => 'purple', default => 'gray',
+                    ->color(fn (?string $state): string => match ($state) {
+                        'wallet'   => 'success',
+                        'card'     => 'warning',
+                        'zarinpal' => 'info',
+                        'crypto'   => 'primary',
+                        default    => 'gray',
                     }),
 
                 TextColumn::make('created_at')->label('تاریخ سفارش')->toggleable()->dateTime('Y-m-d')->sortable()
@@ -133,8 +145,9 @@ class OrderResource extends Resource
             ->defaultSort('created_at', 'desc')
             ->filters([
                 Tables\Filters\SelectFilter::make('status')->label('وضعیت')
-                    ->options(['pending' => 'در انتظار پرداخت', 'paid' => 'پرداخت شده', 'expired' => 'منقضی شده']),
-                Tables\Filters\SelectFilter::make('source')->label('منبع')->options(['web' => 'وب‌سایت']),
+                    ->options(['pending' => 'در انتظار پرداخت', 'paid' => 'پرداخت شده', 'failed' => 'ناموفق', 'expired' => 'منقضی شده']),
+                Tables\Filters\SelectFilter::make('payment_method')->label('روش پرداخت')
+                    ->options(['card' => 'کارت به کارت', 'zarinpal' => 'زرین‌پال', 'wallet' => 'کیف پول', 'crypto' => 'ارز دیجیتال']),
             ])
             ->actions([
                 Action::make('approve')

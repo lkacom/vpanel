@@ -21,9 +21,6 @@
         <div class="field-group">
             <div class="field-label">
                 <label for="password">رمز عبور</label>
-                @if(Route::has('password.request'))
-                    <a href="{{ route('password.request') }}">فراموش کردید؟</a>
-                @endif
             </div>
             <div class="input-wrap {{ $errors->has('password') ? 'has-error':'' }}">
                 <span class="input-icon">

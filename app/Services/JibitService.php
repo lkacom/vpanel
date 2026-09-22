@@ -333,16 +333,20 @@ class JibitService
      */
     private function httpClient()
     {
-        $client = Http::withHeaders([
-            'Content-Type' => 'application/json',
-            'Accept'       => 'application/json',
-        ])->timeout(30);
+        $options = [
+            'verify' => ! app()->environment('local'),
+        ];
 
-        if (app()->environment('local')) {
-            $client = $client->withOptions(['verify' => false]);
+        // اگر JIBIT_PROXY در .env تنظیم شده باشد از آن استفاده کن (socks5://127.0.0.1:10808)
+        $proxy = config('services.jibit.proxy', env('JIBIT_PROXY'));
+        if ($proxy) {
+            $options['proxy'] = $proxy;
         }
 
-        return $client;
+        return Http::withHeaders([
+            'Content-Type' => 'application/json',
+            'Accept'       => 'application/json',
+        ])->timeout(30)->withOptions($options);
     }
 
     /**

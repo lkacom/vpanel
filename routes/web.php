@@ -10,7 +10,6 @@ use Illuminate\Support\Facades\Route;
 
 use App\Http\Controllers\WebhookController as NowPaymentsWebhookController;
 use App\Http\Controllers\ZarinpalController;
-use App\Http\Controllers\JibitController;
 
 /*
 |--------------------------------------------------------------------------
@@ -124,16 +123,10 @@ Route::post('/webhooks/nowpayments', [NowPaymentsWebhookController::class, 'hand
 
 // ── ZarinPal Payment Gateway ────────────────────────────────────────────────
 Route::middleware('auth')->post('/payment/zarinpal/{order}', [ZarinpalController::class, 'initiate'])->name('payment.zarinpal.initiate');
+// callback زرین‌پال: بدون auth — درگاه session کاربر را حفظ می‌کند
 Route::get('/payment/zarinpal/receipt', [ZarinpalController::class, 'callback'])->name('payment.zarinpal.callback');
-Route::get('/payment/zarinpal/callback', [ZarinpalController::class, 'callback']);  // backward compat
-// ── Jibit Payment Gateway ───────────────────────────────────────────────────
-Route::middleware('auth')->post('/payment/jibit/{order}', [JibitController::class, 'initiate'])->name('payment.jibit.initiate');
-Route::any('/payment/jibit/callback', [JibitController::class, 'callback'])
-    ->name('payment.jibit.callback')
-    ->withoutMiddleware(['auth']);
-Route::any('/payment/jibit/receipt', [JibitController::class, 'callback'])
-    ->withoutMiddleware(['auth']); // سازگاری با خریدهایی که callback قدیمی دارند
-// ────────────────────────────────────────────────────────────────────────────
+Route::get('/payment/zarinpal/callback', [ZarinpalController::class, 'callback']); // backward compat
+
 
 
 /* BREEZE AUTHENTICATION */
