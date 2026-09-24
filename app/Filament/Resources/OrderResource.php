@@ -85,18 +85,19 @@ class OrderResource extends Resource
             )
             ->columns([
                 ImageColumn::make('card_payment_receipt')
-                    ->label('رسید')->disk('public')->toggleable()->size(60)
-                    ->url(fn (Order $record): ?string => $record->card_payment_receipt
+                    ->label('رسید کارت')->disk('public')->toggleable()->size(60)
+                    ->url(fn (?Order $record): ?string => $record?->card_payment_receipt
                         ? Storage::disk('public')->url($record->card_payment_receipt) : null)
-                    ->openUrlInNewTab(),
+                    ->openUrlInNewTab()
+                    ->visible(fn (?Order $record): bool => $record?->payment_method === 'card'),
 
                 TextColumn::make('user.email')->label('کاربر')->searchable()->sortable(),
 
                 TextColumn::make('plan.name')
                     ->label('عنوان')
-                    ->default(fn (Order $record): string => $record->plan_id ? $record->plan->name : 'افزایش موجودی')
-                    ->description(fn (Order $record): string => $record->renews_order_id ? ' (تمدید سفارش #' . $record->renews_order_id . ')' : '')
-                    ->color(fn (Order $record) => $record->renews_order_id ? 'primary' : 'gray'),
+                    ->default(fn (?Order $record): string => $record?->plan_id ? $record->plan->name : 'افزایش موجودی')
+                    ->description(fn (?Order $record): string => $record?->renews_order_id ? ' (تمدید سفارش #' . $record->renews_order_id . ')' : '')
+                    ->color(fn (?Order $record) => $record?->renews_order_id ? 'primary' : 'gray'),
 
                 TextColumn::make('final_price')
                     ->label('مبلغ')
@@ -130,6 +131,13 @@ class OrderResource extends Resource
                         default    => 'gray',
                     }),
 
+                TextColumn::make('updated_at')
+                    ->label('آخرین به‌روزرسانی')
+                    ->sortable()
+                    ->formatStateUsing(fn ($state) => Jalalian::fromDateTime($state)->format('Y/m/d H:i'))
+                    ->description(fn (?Order $record) => $record?->card_payment_receipt ? 'رسید ارسال شده' : 'رسید ارسال نشده')
+                    ->color(fn (?Order $record) => $record?->card_payment_receipt ? 'success' : 'danger'),
+
                 TextColumn::make('created_at')->label('تاریخ سفارش')->toggleable()->dateTime('Y-m-d')->sortable()
                     ->formatStateUsing(fn ($state) => Jalalian::fromDateTime($state)->format('Y/m/d')),
 
@@ -144,10 +152,12 @@ class OrderResource extends Resource
             ])
             ->defaultSort('created_at', 'desc')
             ->filters([
-                Tables\Filters\SelectFilter::make('status')->label('وضعیت')
-                    ->options(['pending' => 'در انتظار پرداخت', 'paid' => 'پرداخت شده', 'failed' => 'ناموفق', 'expired' => 'منقضی شده']),
-                Tables\Filters\SelectFilter::make('payment_method')->label('روش پرداخت')
-                    ->options(['card' => 'کارت به کارت', 'zarinpal' => 'زرین‌پال', 'wallet' => 'کیف پول', 'crypto' => 'ارز دیجیتال']),
+                Tables\Filters\Filter::make('has_receipt')
+                    ->label('فقط سفارشات با رسید')
+                    ->query(fn ($query) => $query->whereNotNull('card_payment_receipt')),
+                Tables\Filters\Filter::make('no_receipt')
+                    ->label('فقط سفارشات بدون رسید')
+                    ->query(fn ($query) => $query->whereNull('card_payment_receipt')),
             ])
             ->actions([
                 Action::make('approve')
