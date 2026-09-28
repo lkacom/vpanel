@@ -183,12 +183,23 @@ install_vpanel() {
     sudo ufw allow 'OpenSSH'
     sudo ufw allow 'Nginx Full'
 
-    # --- Download project ---
-    step "⬇️ Downloading source code..."
+    # --- Download project (latest release tag) ---
+    step "⬇️ Downloading source code (latest release)..."
     sudo rm -rf "$PROJECT_PATH"
     sudo git clone "$GITHUB_REPO" "$PROJECT_PATH"
-    sudo chown -R ${WEB_USER}:${WEB_USER} "$PROJECT_PATH"
     cd "$PROJECT_PATH"
+
+    # Fetch all tags and checkout the latest release tag
+    sudo git fetch --tags origin
+    LATEST_TAG=$(git tag --sort=-version:refname | head -n 1)
+    if [ -n "$LATEST_TAG" ]; then
+        step "📌 Checking out latest release: ${LATEST_TAG}"
+        sudo git checkout "$LATEST_TAG"
+    else
+        error "⚠️ No release tags found — installing from main branch."
+    fi
+
+    sudo chown -R ${WEB_USER}:${WEB_USER} "$PROJECT_PATH"
 
     # --- Create database ---
     sudo mysql -e "CREATE DATABASE IF NOT EXISTS \`$DB_NAME\`;"
@@ -357,6 +368,43 @@ update_vpanel() {
 
     echo
 
+    # --- Detect current installed version (from git tag) ---
+    CURRENT_VERSION=$(git describe --tags --exact-match 2>/dev/null || git describe --tags 2>/dev/null || echo "unknown")
+
+    # --- Fetch latest release tag from GitHub API ---
+    step "Fetching latest release information from GitHub..."
+    sudo git fetch --tags --force origin
+    LATEST_VERSION=$(git tag --sort=-version:refname | head -n 1)
+
+    if [ -z "$LATEST_VERSION" ]; then
+        error "Error: No release tags found in the repository. Cannot determine the latest version."
+        exit 1
+    fi
+
+    # --- Show version info box ---
+    echo
+    echo -e "${CYAN}╭────────────────────────────────────────────╮${NC}"
+    echo -e "${CYAN}│${NC}  📊  VPanel Version Status                      ${CYAN}│${NC}"
+    echo -e "${CYAN}├────────────────────────────────────────────┤${NC}"
+    echo -e "${CYAN}│${NC}  Installed version :  ${YELLOW}${CURRENT_VERSION}${NC}"
+    echo -e "${CYAN}│${NC}  Latest version    :  ${GREEN}${LATEST_VERSION}${NC}"
+    echo -e "${CYAN}╰────────────────────────────────────────────╯${NC}"
+    echo
+
+    if [ "$CURRENT_VERSION" = "$LATEST_VERSION" ]; then
+        success "✔ VPanel is already up-to-date (${LATEST_VERSION}). No update needed."
+        exit 0
+    fi
+
+    echo -e "${YELLOW}This will update VPanel from ${CURRENT_VERSION} → ${LATEST_VERSION}${NC}"
+    read -p "Do you want to proceed? (y/n): " CONFIRM_UPDATE
+    if [[ "$CONFIRM_UPDATE" != "y" && "$CONFIRM_UPDATE" != "Y" ]]; then
+        step "Update cancelled by user."
+        exit 0
+    fi
+
+    echo
+
     # --- Step 1: Prepare environment & enable maintenance mode ---
     step "Step 1/9: Preparing environment and enabling maintenance mode..."
 
@@ -370,12 +418,11 @@ update_vpanel() {
 
     sudo -u ${WEB_USER} php artisan down || true
 
-    # --- Step 2: Pull latest code from GitHub ---
-    step "Step 2/9: Fetching the latest changes from GitHub..."
-    sudo git fetch origin
-    sudo git reset --hard origin/main
+    # --- Step 2: Checkout latest release tag from GitHub ---
+    step "Step 2/9: Checking out release ${LATEST_VERSION} from GitHub..."
+    sudo git checkout "$LATEST_VERSION"
 
-    # Guarantee .env survives the reset no matter what (protects APP_KEY, DB creds, SSL email)
+    # Guarantee .env survives the checkout no matter what (protects APP_KEY, DB creds, SSL email)
     sudo cp "$ENV_BACKUP" .env
 
     # --- Step 3: Fix file permissions ---
