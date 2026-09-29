@@ -129,5 +129,21 @@ Route::get('/payment/zarinpal/callback', [ZarinpalController::class, 'callback']
 
 
 
+// DEBUG ROUTE - حذف بعد از بررسی
+Route::get('/debug-version', function () {
+    $path = base_path();
+    $safePath = str_replace('\\', '/', $path);
+    $output = [];
+    $exitCode = 0;
+    exec("git -c safe.directory={$safePath} -C " . escapeshellarg($path) . " tag --sort=-version:refname", $output, $exitCode);
+    return response()->json([
+        'base_path'  => $path,
+        'safe_path'  => $safePath,
+        'exit_code'  => $exitCode,
+        'tags'       => $output,
+        'first_tag'  => $output[0] ?? null,
+    ]);
+});
+
 /* BREEZE AUTHENTICATION */
 require __DIR__.'/auth.php';
