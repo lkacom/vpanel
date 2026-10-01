@@ -26,8 +26,8 @@ class VpanelInfoWidget extends Widget
         $output = [];
         $exitCode = 0;
 
-        // خروجی تمیز بدون pipe در PHP خالص
-        exec("git -c safe.directory={$safePath} -C " . escapeshellarg($path) . " tag --sort=-version:refname", $output, $exitCode);
+        // \exec با backslash تا PHP از global scope استفاده کند نه namespace فعلی
+        \exec("git -c safe.directory={$safePath} -C " . escapeshellarg($path) . " tag --sort=-version:refname", $output, $exitCode);
 
         if ($exitCode !== 0 || empty($output)) {
             return 'نامشخص';
