@@ -15,25 +15,31 @@ class VpanelInfoWidget extends Widget
     protected string $view = 'filament.widgets.info-widget';
 
     /**
-     * خواندن نسخه نصب‌شده از git tag
-     * اگر git در دسترس نبود یا تگی وجود نداشت، «نامشخص» برمی‌گردد.
+     * خواندن نسخه با اولویت‌بندی:
+     * 1. version.json  — ساخته‌شده توسط install.sh (سرور اختصاصی)
+     * 2. composer.json — فیلد version (هاست اشتراکی / محیط dev)
      */
     public function getVersion(): string
     {
-        $path = base_path();
-        $safePath = str_replace('\\', '/', $path);
-
-        $output = [];
-        $exitCode = 0;
-
-        // \exec با backslash تا PHP از global scope استفاده کند نه namespace فعلی
-        \exec("git -c safe.directory={$safePath} -C " . escapeshellarg($path) . " tag --sort=-version:refname", $output, $exitCode);
-
-        if ($exitCode !== 0 || empty($output)) {
-            return 'نامشخص';
+        // 1) فایل version.json که install.sh می‌سازد
+        $versionFile = base_path('version.json');
+        if (file_exists($versionFile)) {
+            $data = json_decode(file_get_contents($versionFile), true);
+            if (!empty($data['version'])) {
+                return $data['version'];
+            }
         }
 
-        return trim($output[0]);
+        // 2) فیلد version در composer.json
+        $composerFile = base_path('composer.json');
+        if (file_exists($composerFile)) {
+            $data = json_decode(file_get_contents($composerFile), true);
+            if (!empty($data['version'])) {
+                return $data['version'];
+            }
+        }
+
+        return 'نامشخص';
     }
 
     protected function getViewData(): array

@@ -195,8 +195,10 @@ install_vpanel() {
     if [ -n "$LATEST_TAG" ]; then
         step "📌 Checking out latest release: ${LATEST_TAG}"
         sudo git checkout "$LATEST_TAG"
+        echo "{\"version\": \"${LATEST_TAG}\"}" | sudo tee "${PROJECT_PATH}/version.json" > /dev/null
     else
         error "⚠️ No release tags found — installing from main branch."
+        echo "{\"version\": \"dev\"}" | sudo tee "${PROJECT_PATH}/version.json" > /dev/null
     fi
 
     sudo chown -R ${WEB_USER}:${WEB_USER} "$PROJECT_PATH"
@@ -421,6 +423,7 @@ update_vpanel() {
     # --- Step 2: Checkout latest release tag from GitHub ---
     step "Step 2/9: Checking out release ${LATEST_VERSION} from GitHub..."
     sudo git checkout "$LATEST_VERSION"
+    echo "{\"version\": \"${LATEST_VERSION}\"}" | sudo tee "${PROJECT_PATH}/version.json" > /dev/null
 
     # Guarantee .env survives the checkout no matter what (protects APP_KEY, DB creds, SSL email)
     sudo cp "$ENV_BACKUP" .env
