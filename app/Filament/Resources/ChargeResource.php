@@ -94,10 +94,9 @@ class ChargeResource extends Resource
             ->columns([
                 ImageColumn::make('card_payment_receipt')
                     ->label('فیش')
-                    ->disk('public')
+                    ->getStateUsing(fn (Order $record): ?string => $record->receipt_url)
                     ->size(60)
-                    ->url(fn (Order $record): ?string => $record->card_payment_receipt
-                        ? Storage::disk('public')->url($record->card_payment_receipt) : null)
+                    ->url(fn (Order $record): ?string => $record->receipt_url)
                     ->openUrlInNewTab(),
 
                 TextColumn::make('user.name')

@@ -39,6 +39,16 @@ class Order extends Model
         return view('payment.choose', ['plan' => $plan]);
     }
 
+    /**
+     * آدرس نمایش فیش کارت به کارت از طریق route احرازهویت‌شده (بدون نیاز به symlink پوشه storage).
+     */
+    public function getReceiptUrlAttribute(): ?string
+    {
+        return filled($this->card_payment_receipt)
+            ? route('order.receipt', $this)
+            : null;
+    }
+
     public function transactions(): HasMany
     {
         return $this->hasMany(Transaction::class);

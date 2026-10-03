@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ReceiptController;
 use App\Models\Plan;
 use App\Models\Setting;
 use App\Models\User;
@@ -117,6 +118,9 @@ Route::middleware(['auth'])->group(function () {
 
     Route::post('/payment/crypto/{order}', [OrderController::class, 'processCryptoPayment'])->name('payment.crypto.process');
     Route::post('/payment/wallet/{order}', [OrderController::class, 'processWalletPayment'])->name('payment.wallet.process');
+
+    // نمایش فیش کارت به کارت (ادمین / صاحب سفارش)
+    Route::get('/order/{order}/receipt', [ReceiptController::class, 'show'])->name('order.receipt');
 });
 
 Route::post('/webhooks/nowpayments', [NowPaymentsWebhookController::class, 'handle'])->name('webhooks.nowpayments');

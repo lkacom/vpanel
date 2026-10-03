@@ -86,10 +86,9 @@ class ViewOrder extends ViewRecord
                 ->schema([
                     ImageEntry::make('card_payment_receipt')
                         ->label('')
-                        ->disk('public')
+                        ->getStateUsing(fn (Order $record): ?string => $record->receipt_url)
                         ->size(420)
-                        ->url(fn (Order $record): ?string => $record->card_payment_receipt
-                            ? Storage::disk('public')->url($record->card_payment_receipt) : null)
+                        ->url(fn (Order $record): ?string => $record->receipt_url)
                         ->openUrlInNewTab(),
                 ]),
 

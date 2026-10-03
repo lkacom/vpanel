@@ -243,7 +243,10 @@ install_vpanel() {
 
     sudo -u ${WEB_USER} php artisan key:generate
     sudo -u ${WEB_USER} php artisan migrate:fresh --seed --force --no-interaction
-    sudo -u ${WEB_USER} php artisan storage:link
+    # Public storage link (uploaded logos/receipts) + make sure upload folders exist and are writable
+    sudo -u ${WEB_USER} php artisan storage:link --force
+    sudo -u ${WEB_USER} mkdir -p storage/app/public/receipts storage/app/public/logos public/uploads/logos
+    sudo chmod -R 775 storage bootstrap/cache public/uploads
 
     # --- Configure Nginx ---
     step "🌐 Configuring Nginx with upload limits..."
@@ -464,7 +467,10 @@ update_vpanel() {
     sudo -u ${WEB_USER} php artisan config:cache
     sudo -u ${WEB_USER} php artisan route:cache
     sudo -u ${WEB_USER} php artisan view:cache
-    sudo -u ${WEB_USER} php artisan storage:link || true
+    # Re-create the public storage link (--force fixes a missing/broken link) and the upload folders
+    sudo -u ${WEB_USER} php artisan storage:link --force || true
+    sudo -u ${WEB_USER} mkdir -p storage/app/public/receipts storage/app/public/logos public/uploads/logos
+    sudo chmod -R 775 storage/app/public public/uploads
     sudo -u ${WEB_USER} php artisan up
 
     # --- Step 8: Re-check / retry SSL for the domain used at install time ---

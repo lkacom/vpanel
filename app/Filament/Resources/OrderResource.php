@@ -190,11 +190,10 @@ class OrderResource extends Resource
 
                 ImageColumn::make('card_payment_receipt')
                     ->label('رسید کارت')
-                    ->disk('public')
+                    ->getStateUsing(fn (Order $record): ?string => $record->receipt_url)
                     ->size(60)
                     ->toggleable(isToggledHiddenByDefault: true)
-                    ->url(fn (?Order $record): ?string => $record?->card_payment_receipt
-                        ? Storage::disk('public')->url($record->card_payment_receipt) : null)
+                    ->url(fn (Order $record): ?string => $record->receipt_url)
                     ->openUrlInNewTab(),
             ])
             ->defaultSort('created_at', 'desc')

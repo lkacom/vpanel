@@ -154,21 +154,6 @@ class ThemeSettings extends Page implements HasForms
                                     Toggle::make('zarinpal_sandbox')->label('حالت آزمایشی (Sandbox)')
                                         ->onColor('warning')->offColor('gray'),
                                 ])->columns(2),
-
-                            Section::make('درگاه جیبیت')
-                                ->description('تنظیمات اتصال به درگاه پرداخت جیبیت')
-                                ->schema([
-                                    Toggle::make('jibit_active')->label('فعال‌سازی درگاه جیبیت')
-                                        ->onColor('success')->offColor('gray')->columnSpanFull(),
-                                    TextInput::make('jibit_api_key')->label('کد API')
-                                        ->placeholder('xxxxxxxxxxxxxxxxxxxxxxxxxxxx')->maxLength(64)->columnSpanFull(),
-                                    TextInput::make('jibit_secret_key')->label('کد رمز نگهدارنده (Secret Key)')
-                                        ->placeholder('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')->maxLength(64)->columnSpanFull(),
-                                    Select::make('jibit_currency')->label('واحد پول')
-                                        ->options(['IRT' => 'تومان (IRT)', 'IRR' => 'ریال (IRR)'])->default('IRT'),
-                                    TextInput::make('jibit_gateway_name')->label('نام نمایشی درگاه')
-                                        ->placeholder('پرداخت آنلاین — جیبیت')->maxLength(100),
-                                ])->columns(2),
                         ]),
 
                     Tabs\Tab::make('سیستم دعوت از دوستان')
@@ -197,27 +182,20 @@ class ThemeSettings extends Page implements HasForms
         $formData['active_theme'] = ($formData['main_theme_enabled'] ?? true) ? 'rocket' : 'welcome';
         unset($formData['main_theme_enabled']);
 
-        // ── پردازش لوگو ──
-        // FileUpload با disk=public مقدار را به صورت "logos/filename.ext" برمی‌گرداند
-        $logoArray = $formData['login_logo'] ?? [];
-        if (is_array($logoArray) && count($logoArray) > 0) {
-            $item = array_values($logoArray)[0];
-            if (is_string($item) && strlen($item) > 0) {
-                $formData['login_logo'] = $item;
-            } else {
-                unset($formData['login_logo']);
-            }
-        } else {
-            $formData['login_logo'] = ''; // حذف لوگوی سفارشی و بازگشت به پیش‌فرض
+        // لوگوی فرم ورود — FileUpload تک‌فایلی در getState() یک رشته ("logos/filename.ext") برمی‌گرداند،
+        // اما با نسخه‌های قدیمی‌تر ممکن است آرایه باشد. هر دو حالت پشتیبانی می‌شوند.
+        $logo = $formData['login_logo'] ?? null;
+        if (is_array($logo)) {
+            $logo = array_values($logo)[0] ?? null;
         }
+        // مقدار خالی = حذف لوگوی سفارشی و بازگشت به پیش‌فرض
+        $formData['login_logo'] = (is_string($logo) && $logo !== '') ? $logo : '';
 
         foreach ($formData as $key => $value) {
             Setting::updateOrCreate(['key' => $key], ['value' => $value ?? '']);
         }
 
         Cache::forget('settings');
-        Cache::forget('jibit_access_token');
-        Cache::forget('jibit_refresh_token');
 
         // لوگو ذخیره‌شده را به public/uploads/logos کپی کن تا بدون symlink قابل دسترسی باشد
         $savedLogo = Setting::where('key', 'login_logo')->value('value');

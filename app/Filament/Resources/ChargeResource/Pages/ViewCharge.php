@@ -54,11 +54,10 @@ class ViewCharge extends ViewRecord
                 ->schema([
                     ImageEntry::make('card_payment_receipt')
                         ->label('')
-                        ->disk('public')
+                        ->getStateUsing(fn (Order $record): ?string => $record->receipt_url)
                         ->size(480)
                         ->visible(fn (Order $record): bool => filled($record->card_payment_receipt))
-                        ->url(fn (Order $record): ?string => $record->card_payment_receipt
-                            ? Storage::disk('public')->url($record->card_payment_receipt) : null)
+                        ->url(fn (Order $record): ?string => $record->receipt_url)
                         ->openUrlInNewTab(),
 
                     TextEntry::make('receipt_notice')
