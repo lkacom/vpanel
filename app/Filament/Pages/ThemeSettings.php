@@ -101,7 +101,7 @@ class ThemeSettings extends Page implements HasForms
                         ->visible(fn(Get $get) => (bool) $get('main_theme_enabled'))
                         ->schema([
                             Section::make('عمومی')->schema([
-                                TextInput::make('rocket_navbar_brand')->label('نام برند در Navbar'),
+                                TextInput::make('rocket_navbar_brand')->label('نام برند در سربرگ'),
                                 TextInput::make('rocket_footer_text')->label('متن فوتر'),
                             ])->columns(2),
                             Section::make('بخش اصلی (Hero Section)')->schema([
