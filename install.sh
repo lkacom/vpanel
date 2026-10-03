@@ -15,6 +15,7 @@
 # Usage:
 #   sudo ./install.sh install
 #   sudo ./install.sh update
+#   sudo ./install.sh change-domain   (change the domain after install + auto SSL)
 #   sudo ./install.sh uninstall
 #
 # If no argument is passed, an interactive menu will be shown.
@@ -609,6 +610,139 @@ uninstall_vpanel() {
 }
 
 # ==================================================================================
+# ===                              CHANGE DOMAIN                                ===
+# ==================================================================================
+change_domain() {
+    banner
+    echo -e "${CYAN}--- Change VPanel domain ---${NC}"
+
+    if [ ! -d "$PROJECT_PATH" ] || [ ! -f "$PROJECT_PATH/.env" ]; then
+        error "Error: VPanel is not installed ($PROJECT_PATH/.env not found)."
+        exit 1
+    fi
+
+    cd "$PROJECT_PATH"
+
+    OLD_DOMAIN=$(grep '^APP_URL=' .env | head -n1 | cut -d '=' -f2- | sed 's|https\?://||' | sed 's|/.*||')
+    SAVED_EMAIL=$(grep '^VPANEL_SSL_EMAIL=' .env | head -n1 | cut -d '=' -f2-)
+    echo -e "Current domain: ${YELLOW}${OLD_DOMAIN:-unknown}${NC}"
+    echo
+
+    # --- New domain ---
+    while true; do
+        read -p "🌐 New domain (e.g. panel.example.com): " NEW_DOMAIN
+        NEW_DOMAIN=$(echo "$NEW_DOMAIN" | sed 's|http[s]*://||g' | sed 's|/.*||g' | tr -d '[:space:]')
+        if is_valid_domain "$NEW_DOMAIN"; then
+            break
+        fi
+        error "❌ Invalid or empty domain. Please enter a valid domain or subdomain."
+    done
+
+    if [ "$NEW_DOMAIN" = "$OLD_DOMAIN" ]; then
+        step "The new domain is the same as the current one — only re-checking the SSL certificate."
+    fi
+
+    # --- Email for Let's Encrypt (default: the one saved at install time) ---
+    read -p "✉️ Email for SSL certificate [${SAVED_EMAIL}]: " SSL_EMAIL
+    SSL_EMAIL=${SSL_EMAIL:-$SAVED_EMAIL}
+    if [ -z "$SSL_EMAIL" ]; then
+        error "An email address is required to request the SSL certificate."
+        exit 1
+    fi
+    echo
+
+    step "The domain's DNS (A/AAAA record) must already point to this server, and ports 80/443 must be open."
+    read -p "Continue? (y/n): " CONFIRM_DOMAIN
+    if [[ "$CONFIRM_DOMAIN" != "y" && "$CONFIRM_DOMAIN" != "Y" ]]; then
+        step "Operation cancelled."
+        exit 0
+    fi
+
+    # --- Step 1: Rewrite the Nginx vhost for the new domain (plain HTTP; certbot adds HTTPS) ---
+    step "Step 1/4: Updating Nginx configuration..."
+    PHP_FPM_SOCK_PATH="/run/php/php${PHP_VERSION}-fpm.sock"
+    sudo cp /etc/nginx/sites-available/vpanel "/etc/nginx/sites-available/vpanel.bak.$(date +%Y%m%d%H%M%S)" 2>/dev/null || true
+
+    sudo tee /etc/nginx/sites-available/vpanel >/dev/null <<EOF
+server {
+    listen 80;
+    server_name $NEW_DOMAIN;
+    root $PROJECT_PATH/public;
+
+    client_max_body_size 10M;
+
+    index index.php;
+    location / {
+        try_files \$uri \$uri/ /index.php?\$query_string;
+    }
+    location ~ \.php\$ {
+        fastcgi_pass unix:$PHP_FPM_SOCK_PATH;
+        fastcgi_param SCRIPT_FILENAME \$realpath_root\$fastcgi_script_name;
+        include fastcgi_params;
+    }
+}
+EOF
+
+    sudo ln -sf /etc/nginx/sites-available/vpanel /etc/nginx/sites-enabled/
+    if ! sudo nginx -t; then
+        error "Nginx configuration test failed. Restoring is possible from /etc/nginx/sites-available/vpanel.bak.*"
+        exit 1
+    fi
+    sudo systemctl reload nginx
+
+    # --- Step 2: Update .env (HTTP first; switched to HTTPS only if the certificate is issued) ---
+    step "Step 2/4: Updating .env..."
+    sudo cp .env ".env.bak.$(date +%Y-%m-%d_%H-%M-%S)"
+    sudo sed -i "s|^APP_URL=.*|APP_URL=http://$NEW_DOMAIN|" .env
+    if grep -q '^VPANEL_SSL_EMAIL=' .env; then
+        sudo sed -i "s|^VPANEL_SSL_EMAIL=.*|VPANEL_SSL_EMAIL=$SSL_EMAIL|" .env
+    else
+        echo "VPANEL_SSL_EMAIL=$SSL_EMAIL" | sudo tee -a .env >/dev/null
+    fi
+    sudo chown ${WEB_USER}:${WEB_USER} .env
+
+    # --- Step 3: Request the SSL certificate automatically ---
+    step "Step 3/4: Requesting SSL certificate for $NEW_DOMAIN..."
+    SITE_URL="http://$NEW_DOMAIN"
+    if request_ssl_certificate "$NEW_DOMAIN" "$SSL_EMAIL"; then
+        success "✔ SSL certificate issued successfully."
+        SITE_URL="https://$NEW_DOMAIN"
+        sudo sed -i "s|^APP_URL=.*|APP_URL=$SITE_URL|" .env
+    else
+        error "⚠️ SSL could not be issued (check DNS and that ports 80/443 are reachable)."
+        error "The site works over HTTP. Run '$0 change-domain' again (same domain) to retry the certificate."
+    fi
+
+    # --- Step 4: Refresh Laravel caches ---
+    step "Step 4/4: Refreshing application caches..."
+    sudo -u ${WEB_USER} php artisan optimize:clear
+    sudo -u ${WEB_USER} php artisan config:cache
+    sudo -u ${WEB_USER} php artisan route:cache
+    sudo -u ${WEB_USER} php artisan view:cache
+    sudo supervisorctl restart vpanel-worker:* || true
+
+    # Keep the saved install info in sync
+    if [ -f /root/vpanel-install-info.txt ] && [ -n "$OLD_DOMAIN" ]; then
+        sudo sed -i "s|$OLD_DOMAIN|$NEW_DOMAIN|g" /root/vpanel-install-info.txt
+    fi
+
+    # --- Optionally remove the old certificate ---
+    if [ -n "$OLD_DOMAIN" ] && [ "$OLD_DOMAIN" != "$NEW_DOMAIN" ] && [ -d "/etc/letsencrypt/live/$OLD_DOMAIN" ]; then
+        read -p "Delete the old SSL certificate of $OLD_DOMAIN? (y/n): " DEL_OLD
+        if [[ "$DEL_OLD" == "y" || "$DEL_OLD" == "Y" ]]; then
+            sudo certbot delete --cert-name "$OLD_DOMAIN" --non-interactive || error "Could not delete the old certificate."
+        fi
+    fi
+
+    echo
+    echo -e "${GREEN}=====================================================${NC}"
+    success "✅ Domain changed successfully!"
+    echo -e "🌐 Site:        $SITE_URL"
+    echo -e "🔑 Admin panel: $SITE_URL/admin"
+    echo -e "${GREEN}=====================================================${NC}"
+}
+
+# ==================================================================================
 # ===                                  MENU                                     ===
 # ==================================================================================
 main() {
@@ -621,12 +755,14 @@ main() {
         echo "What would you like to do?"
         echo "  1) Install VPanel"
         echo "  2) Update VPanel"
-        echo "  3) Uninstall VPanel"
-        read -p "Select an option [1-3]: " CHOICE
+        echo "  3) Change domain (and issue SSL)"
+        echo "  4) Uninstall VPanel"
+        read -p "Select an option [1-4]: " CHOICE
         case "$CHOICE" in
             1) ACTION="install" ;;
             2) ACTION="update" ;;
-            3) ACTION="uninstall" ;;
+            3) ACTION="change-domain" ;;
+            4) ACTION="uninstall" ;;
             *) error "Invalid option."; exit 1 ;;
         esac
     fi
@@ -634,9 +770,10 @@ main() {
     case "$ACTION" in
         install)   install_vpanel ;;
         update)    update_vpanel ;;
+        change-domain) change_domain ;;
         uninstall) uninstall_vpanel ;;
         *)
-            error "Usage: $0 [install|update|uninstall]"
+            error "Usage: $0 [install|update|change-domain|uninstall]"
             exit 1
             ;;
     esac
