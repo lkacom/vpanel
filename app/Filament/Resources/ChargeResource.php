@@ -148,7 +148,7 @@ class ChargeResource extends Resource
     public static function approveAction(): Action
     {
         return Action::make('approve')
-            ->label('تایید و شارژ')
+            ->label('تایید شارژ')
             ->icon('heroicon-o-check-circle')
             ->color('success')
             ->button()
