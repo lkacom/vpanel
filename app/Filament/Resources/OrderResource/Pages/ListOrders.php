@@ -24,7 +24,7 @@ class ListOrders extends ListRecords
     public function getTabs(): array
     {
         return [
-            'paid' => Tab::make('سفارشات موفق')
+            'paid' => Tab::make('سفارشات ')
                 ->icon('heroicon-o-check-circle')
                 ->modifyQueryUsing(fn (Builder $query): Builder => $query->where('status', 'paid')),
 
