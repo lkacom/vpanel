@@ -51,8 +51,9 @@ it('creates an admin account that can authenticate with the configured credentia
 
 it('shows separate Sanaei and TX-UI choices in initial panel setup', function () {
     Livewire::test(VpnSettings::class)
+        ->assertSee('مرزبان')
         ->assertSee('سنایی')
-        ->assertSee('پنل علیرضا');
+        ->assertSee('علیرضا');
 });
 
 it('accepts the standard Sanaei login response and rejects an explicit failure', function () {

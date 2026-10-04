@@ -15,11 +15,13 @@ test('profile page is displayed', function () {
 test('profile information can be updated', function () {
     $user = User::factory()->create();
 
+    $newEmail = 'profile-' . uniqid() . '@example.test';
+
     $response = $this
         ->actingAs($user)
         ->patch('/profile', [
             'name' => 'Test User',
-            'email' => 'test@example.com',
+            'email' => $newEmail,
         ]);
 
     $response
@@ -29,7 +31,7 @@ test('profile information can be updated', function () {
     $user->refresh();
 
     $this->assertSame('Test User', $user->name);
-    $this->assertSame('test@example.com', $user->email);
+    $this->assertSame($newEmail, $user->email);
     $this->assertNull($user->email_verified_at);
 });
 
