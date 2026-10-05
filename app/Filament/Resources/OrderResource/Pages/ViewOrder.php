@@ -35,7 +35,9 @@ class ViewOrder extends ViewRecord
 
                     TextEntry::make('user.email')->label('ایمیل کاربر')->copyable(),
 
-                    TextEntry::make('plan.name')->label('پکیج'),
+                    TextEntry::make('plan.name')
+                        ->label('پکیج')
+                        ->getStateUsing(fn (Order $record): string => $record->plan?->name ?? 'اکانت تست رایگان'),
 
                     TextEntry::make('renews_order_id')
                         ->label('نوع سفارش')
@@ -44,9 +46,19 @@ class ViewOrder extends ViewRecord
 
                     TextEntry::make('plan.volume_gb')
                         ->label('حجم')
-                        ->formatStateUsing(fn ($state): string => $state . ' GB'),
+                        ->getStateUsing(fn (Order $record): string => $record->plan
+                            ? $record->plan->volume_gb . ' GB'
+                            : ($record->trialAccount
+                                ? rtrim(rtrim(number_format($record->trialAccount->volume_gb, 2, '.', ''), '0'), '.') . ' GB'
+                                : '—')),
 
-                    TextEntry::make('plan.duration_label')->label('مدت'),
+                    TextEntry::make('plan.duration_label')
+                        ->label('مدت')
+                        ->getStateUsing(fn (Order $record): string => $record->plan
+                            ? (string) $record->plan->duration_label
+                            : ($record->trialAccount
+                                ? rtrim(rtrim(number_format($record->trialAccount->duration_days, 2, '.', ''), '0'), '.') . ' روز'
+                                : '—')),
 
                     TextEntry::make('paid_amount')
                         ->label('مبلغ')

@@ -39,7 +39,7 @@ class OrderResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
-            ->packageOrders()
+            ->where(fn (Builder $q) => $q->packageOrders()->orWhere('payment_method', Order::PAYMENT_TRIAL))
             ->with(['user', 'plan', 'renewedOrder'])
             ->withSum(['transactions as paid_amount' => fn ($query) => $query->where('status', 'completed')], 'amount');
     }
@@ -90,6 +90,7 @@ class OrderResource extends Resource
             'card'     => 'کارت به کارت',
             'zarinpal' => 'زرین‌پال',
             'crypto'   => 'ارز دیجیتال',
+            Order::PAYMENT_TRIAL => 'رایگان',
             null, ''   => 'نامشخص',
             default    => $state,
         };
@@ -102,6 +103,7 @@ class OrderResource extends Resource
             'card'     => 'warning',
             'zarinpal' => 'info',
             'crypto'   => 'primary',
+            Order::PAYMENT_TRIAL => 'success',
             default    => 'gray',
         };
     }
@@ -138,6 +140,10 @@ class OrderResource extends Resource
     /** مبلغ پرداخت‌شده؛ در صورت نبود تراکنش، قیمت پکیج. */
     public static function resolveAmount(Order $order): int|float|null
     {
+        if ($order->payment_method === Order::PAYMENT_TRIAL) {
+            return 0;
+        }
+
         return $order->paid_amount ?? $order->plan?->price;
     }
 
@@ -155,6 +161,7 @@ class OrderResource extends Resource
 
                 TextColumn::make('plan.name')
                     ->label('پکیج')
+                    ->getStateUsing(fn (Order $record): string => $record->plan?->name ?? 'اکانت تست رایگان')
                     ->description(fn (Order $record): ?string => $record->renews_order_id ? 'تمدید سفارش #' . $record->renews_order_id : null)
                     ->color(fn (Order $record) => $record->renews_order_id ? 'primary' : 'gray'),
 
@@ -210,6 +217,7 @@ class OrderResource extends Resource
                         'wallet'   => 'کیف پول',
                         'card'     => 'کارت به کارت',
                         'zarinpal' => 'زرین‌پال',
+                        Order::PAYMENT_TRIAL => 'اکانت تست رایگان',
                     ]),
             ])
             ->actions([

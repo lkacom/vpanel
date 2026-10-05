@@ -20,9 +20,9 @@
                           onsubmit="return confirm('اکانت تست رایگان ساخته شود؟')">
                         @csrf
                         <button type="submit"
-                                class="w-full sm:w-auto px-5 py-2.5 text-sm font-bold rounded-lg shadow focus:outline-none"
-                                style="background:#6ee7b7;color:#064e3b;border:1px solid #34d399;">
-                            دریافت اکانت تست رایگان
+                                style="background-color: #f43f5e !important; color: #ffffff !important;"
+                                class="w-full sm:w-auto px-6 py-3 text-m font-black bg-rose-500 hover:bg-rose-600 rounded-xl shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-rose-500/50">
+                            ✨ دریافت اکانت تست رایگان
                         </button>
                     </form>
                 @endif

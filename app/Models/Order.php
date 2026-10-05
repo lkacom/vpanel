@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
 
 class Order extends Model
@@ -47,6 +48,77 @@ class Order extends Model
         return filled($this->card_payment_receipt)
             ? route('order.receipt', $this)
             : null;
+    }
+
+    /**
+     * رکوردهای مالی (تراکنش‌ها) کاربر: پرداخت‌های موفق، ناموفق، و فیش کارت به کارتِ منتظر تایید.
+     * سفارش‌هایی که هنوز روش پرداخت ندارند تراکنش محسوب نمی‌شوند.
+     */
+    public function scopeFinancialRecords(Builder $query): Builder
+    {
+        return $query->whereNotNull('payment_method')->where('payment_method', '!=', self::PAYMENT_TRIAL)->where(function (Builder $q): void {
+            $q->whereIn('status', ['paid', 'failed'])
+                ->orWhere(fn (Builder $p) => $p
+                    ->where('status', 'pending')
+                    ->where('payment_method', 'card')
+                    ->whereNotNull('card_payment_receipt'));
+        });
+    }
+
+    public function getPaymentMethodLabelAttribute(): string
+    {
+        return match ($this->payment_method) {
+            'wallet'   => 'کیف پول',
+            'card'     => 'کارت به کارت',
+            'zarinpal' => 'درگاه زرین‌پال',
+            'crypto'   => 'ارز دیجیتال',
+            self::PAYMENT_TRIAL => 'اکانت تست رایگان',
+            null, ''   => 'نامشخص',
+            default    => (string) $this->payment_method,
+        };
+    }
+
+    /** بابت چه منظوری پرداخت انجام شده: شارژ کیف پول / خرید سرویس / تمدید سرویس */
+    public function getPurposeLabelAttribute(): string
+    {
+        if ($this->plan_id === null) {
+            return 'شارژ کیف پول';
+        }
+
+        $planName = $this->plan?->name;
+        $prefix   = $this->renews_order_id ? 'تمدید سرویس' : 'خرید سرویس';
+
+        return $planName ? "{$prefix} {$planName}" : $prefix;
+    }
+
+    /**
+     * شماره رهگیری: کد مرجع درگاه (زرین‌پال / ارز دیجیتال)؛
+     * برای کیف پول و کارت به کارت شماره سفارش.
+     */
+    public function getTrackingCodeAttribute(): string
+    {
+        return (string) ($this->zarinpal_ref_id ?: $this->nowpayments_payment_id ?: ('#' . $this->id));
+    }
+
+    /**
+     * اکانت‌های تست رایگان (با دریافت موفق، یک سفارش با این روش پرداخت برای نمایش در لیست سفارشات مدیر ثبت می‌شود).
+     */
+    public const PAYMENT_TRIAL = 'trial';
+
+    public function scopeTrialAccounts(Builder $query): Builder
+    {
+        return $query->where('payment_method', self::PAYMENT_TRIAL);
+    }
+
+    /** بدون اکانت‌های تست (برای آمار فروش) */
+    public function scopeExcludingTrial(Builder $query): Builder
+    {
+        return $query->where(fn (Builder $q) => $q->whereNull('payment_method')->orWhere('payment_method', '!=', self::PAYMENT_TRIAL));
+    }
+
+    public function trialAccount(): HasOne
+    {
+        return $this->hasOne(TrialAccount::class, 'panel_username', 'panel_username');
     }
 
     public function transactions(): HasMany

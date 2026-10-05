@@ -110,7 +110,7 @@
                             سرویس‌های من
                         </button>
                         <button @click="tab = 'order_history'" :class="{'border-indigo-500 text-indigo-600 dark:text-indigo-400': tab === 'order_history', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-200': tab !== 'order_history'}" class="whitespace-nowrap py-4 px-3 sm:px-1 border-b-2 font-medium text-sm transition">
-                            تاریخچه سفارشات
+                            تراکنش‌ها
                         </button>
                         @if(($trial['enabled'] ?? false))
                             <button @click="tab = 'trial'" :class="{'border-indigo-500 text-indigo-600 dark:text-indigo-400': tab === 'trial', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-200': tab !== 'trial'}" class="whitespace-nowrap py-4 px-3 sm:px-1 border-b-2 font-medium text-sm transition">
@@ -262,54 +262,7 @@
                     </div>
 
                     <div x-show="tab === 'order_history'" x-transition.opacity x-cloak>
-                        <h2 class="text-xl font-bold mb-4 text-gray-900 dark:text-white text-right">تاریخچه سفارشات و تراکنش‌ها</h2>
-                        <div class="space-y-3">
-                            @forelse ($transactions as $transaction)
-                                <div class="p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50">
-                                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-center text-right">
-                                        <div>
-                                            <span class="text-xs text-gray-500">نوع تراکنش</span>
-                                            <p class="font-bold text-gray-900 dark:text-white">
-                                                @if ($transaction->plan)
-                                                    {{ $transaction->renews_order_id ? 'تمدید سرویس' : 'خرید سرویس' }}
-                                                @else
-                                                    شارژ کیف پول
-                                                @endif
-                                            </p>
-                                        </div>
-                                        <div>
-                                            <span class="text-xs text-gray-500">مبلغ</span>
-                                            <p class="font-bold text-gray-900 dark:text-white">
-                                                {{ number_format($transaction->plan->price ?? $transaction->amount) }} تومان
-                                            </p>
-                                        </div>
-                                        <div>
-                                            <span class="text-xs text-gray-500">تاریخ</span>
-                                            <p class="font-mono text-gray-900 dark:text-white" dir="ltr">
-                                                {{ \App\Support\PersianDate::format($transaction->created_at, 'Y/m/d') }}
-                                            </p>
-                                        </div>
-                                        <div class="text-left sm:text-right md:text-left mt-4 sm:mt-0">
-                                            @if ($transaction->status == 'paid')
-                                                <span class="px-3 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                                                    موفق
-                                                </span>
-                                            @elseif ($transaction->status == 'pending')
-                                                <span class="px-3 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
-                                                    در انتظار تایید
-                                                </span>
-                                            @else
-                                                <span class="px-3 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
-                                                    ناموفق/منقضی
-                                                </span>
-                                            @endif
-                                        </div>
-                                    </div>
-                                </div>
-                            @empty
-                                <p class="text-gray-500 dark:text-gray-400 text-center py-10">هیچ تراکنشی یافت نشد.</p>
-                            @endforelse
-                        </div>
+                        @include('partials.transactions-tab')
                     </div>
 
                     @if(($trial['enabled'] ?? false))

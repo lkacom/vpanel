@@ -95,7 +95,12 @@ Route::middleware(['auth'])->group(function () {
             $user->update(['show_renewal_notification' => false]);
         }
         $orders = $user->orders()->with('plan')->whereNotNull('plan_id')->whereNull('renews_order_id')->latest()->get();
-        $transactions = $user->orders()->with('plan')->latest()->get();
+        $transactions = $user->orders()
+            ->financialRecords()
+            ->with('plan')
+            ->withSum(['transactions as paid_amount' => fn ($q) => $q->where('status', 'completed')], 'amount')
+            ->latest()
+            ->get();
         $plans = Plan::where('is_active', true)->orderBy('price')->get();
         $tickets = $user->tickets()->latest()->get();
         $trial = app(TrialAccountService::class)->statusFor($user);

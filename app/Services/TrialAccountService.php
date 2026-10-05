@@ -82,6 +82,19 @@ class TrialAccountService
                     'expires_at'     => $expiresAt,
                 ]);
 
+                // سفارش بدون مبلغ برای نمایش اکانت تست در لیست سفارشات مدیر (در آمار فروش لحاظ نمی‌شود)
+                Order::create([
+                    'user_id'        => $locked->id,
+                    'plan_id'        => null,
+                    'amount'         => 0,
+                    'status'         => 'paid',
+                    'source'         => 'trial',
+                    'payment_method' => Order::PAYMENT_TRIAL,
+                    'panel_username' => $username,
+                    'config_details' => $finalConfig,
+                    'expires_at'     => $expiresAt,
+                ]);
+
                 $locked->increment('trial_accounts_taken');
 
                 $locked->notifications()->create([

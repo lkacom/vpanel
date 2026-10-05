@@ -97,6 +97,12 @@ class OrderController extends Controller
         $newOrder->config_details  = null;
         $newOrder->expires_at      = null;
         $newOrder->renews_order_id = $order->id;
+        // اطلاعات پرداخت سفارش قبلی نباید به سفارش تمدید منتقل شود (در غیر این صورت در لیست تراکنش‌ها پرداختِ موجود نمایش داده می‌شود)
+        $newOrder->payment_method         = null;
+        $newOrder->card_payment_receipt   = null;
+        $newOrder->zarinpal_authority     = null;
+        $newOrder->zarinpal_ref_id        = null;
+        $newOrder->nowpayments_payment_id = null;
         $newOrder->save();
 
         Auth::user()->notifications()->create([
