@@ -3,6 +3,8 @@
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReceiptController;
+use App\Http\Controllers\TrialController;
+use App\Services\TrialAccountService;
 use App\Models\Plan;
 use App\Models\Setting;
 use App\Models\User;
@@ -96,7 +98,9 @@ Route::middleware(['auth'])->group(function () {
         $transactions = $user->orders()->with('plan')->latest()->get();
         $plans = Plan::where('is_active', true)->orderBy('price')->get();
         $tickets = $user->tickets()->latest()->get();
-        return view('dashboard', compact('orders', 'plans', 'tickets', 'transactions'));
+        $trial = app(TrialAccountService::class)->statusFor($user);
+        $trialAccounts = $user->trialAccounts()->latest()->get();
+        return view('dashboard', compact('orders', 'plans', 'tickets', 'transactions', 'trial', 'trialAccounts'));
     })->name('dashboard');
 
     // Wallet
@@ -121,6 +125,9 @@ Route::middleware(['auth'])->group(function () {
 
     // نمایش فیش کارت به کارت (ادمین / صاحب سفارش)
     Route::get('/order/{order}/receipt', [ReceiptController::class, 'show'])->name('order.receipt');
+
+    // دریافت اکانت تست رایگان
+    Route::post('/trial', [TrialController::class, 'store'])->middleware('throttle:5,1')->name('trial.claim');
 });
 
 Route::post('/webhooks/nowpayments', [NowPaymentsWebhookController::class, 'handle'])->name('webhooks.nowpayments');

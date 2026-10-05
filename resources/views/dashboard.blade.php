@@ -112,6 +112,11 @@
                         <button @click="tab = 'order_history'" :class="{'border-indigo-500 text-indigo-600 dark:text-indigo-400': tab === 'order_history', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-200': tab !== 'order_history'}" class="whitespace-nowrap py-4 px-3 sm:px-1 border-b-2 font-medium text-sm transition">
                             تاریخچه سفارشات
                         </button>
+                        @if(($trial['enabled'] ?? false))
+                            <button @click="tab = 'trial'" :class="{'border-indigo-500 text-indigo-600 dark:text-indigo-400': tab === 'trial', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-200': tab !== 'trial'}" class="whitespace-nowrap py-4 px-3 sm:px-1 border-b-2 font-medium text-sm transition">
+                                اکانت تست
+                            </button>
+                        @endif
                         <button @click="tab = 'new_service'" :class="{'border-indigo-500 text-indigo-600 dark:text-indigo-400': tab === 'new_service', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-200': tab !== 'new_service'}" class="whitespace-nowrap py-4 px-3 sm:px-1 border-b-2 font-medium text-sm transition">
                             خرید سرویس جدید
                         </button>
@@ -132,6 +137,7 @@
                 <div class="p-2 sm:p-4">
 
                     <div x-show="tab === 'my_services'" x-transition.opacity>
+                        @include('partials.trial-accounts')
                         @if($orders->isNotEmpty())
                             <div class="space-y-4">
                                 @foreach ($orders->filter(fn($order) => !empty($order->config_details)) as $order)
@@ -305,6 +311,12 @@
                             @endforelse
                         </div>
                     </div>
+
+                    @if(($trial['enabled'] ?? false))
+                        <div x-show="tab === 'trial'" x-transition.opacity x-cloak>
+                            @include('partials.trial-card')
+                        </div>
+                    @endif
 
                     <div x-show="tab === 'new_service'" x-transition.opacity x-cloak>
                         <h2 class="text-2xl font-bold mb-6 text-gray-900 dark:text-white text-right">🚀 خرید سرویس جدید</h2>

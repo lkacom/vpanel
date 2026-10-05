@@ -134,7 +134,7 @@ trait CompletesOrder
 
         $userData = [
             'expire'     => $timestamp,
-            'data_limit' => $plan->volume_gb * 1073741824,
+            'data_limit' => (int) round($plan->volume_gb * 1073741824),
         ];
 
         $response = $isRenewal
@@ -188,7 +188,7 @@ trait CompletesOrder
 
         $clientData = [
             'email'      => $uniqueUsername,
-            'total'      => $plan->volume_gb * 1073741824,
+            'total'      => (int) round($plan->volume_gb * 1073741824),
             'expiryTime' => $timestamp * 1000,
         ];
 
