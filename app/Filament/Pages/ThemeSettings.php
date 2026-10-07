@@ -66,7 +66,7 @@ class ThemeSettings extends Page implements HasForms
                             Section::make('تنظیمات عمومی نمایش')
                                 ->schema([
                                     Toggle::make('main_theme_enabled')
-                                        ->label('قالب اصلی سایت (RocketVPN)')
+                                        ->label('قالب اصلی سایت ')
                                         ->helperText('غیرفعال = فقط صفحه ورود کاربران نمایش داده می‌شود.')
                                         ->onColor('success')
                                         ->offColor('gray')

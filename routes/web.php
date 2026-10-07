@@ -25,8 +25,11 @@ Route::get('/', function () {
     $activeTheme = $settings->get('active_theme', 'welcome');
 
     // اگر قالب غیرفعال است (welcome) و کاربر لاگین است، به داشبورد برو
-    if ($activeTheme === 'welcome' && Auth::check()) {
-        return redirect()->route('dashboard');
+    if ($activeTheme === 'welcome') {
+        // قالب اصلی غیرفعال است: مهمان مستقیم به همان صفحه /login می‌رود؛ کاربر واردشده به داشبورد
+        return Auth::check()
+            ? redirect()->route('dashboard')
+            : redirect()->route('login');
     }
 
     $plans = Plan::where('is_active', true)

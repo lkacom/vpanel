@@ -1,63 +1,90 @@
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>صفحه یافت نشد - 404</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex">
+    <title>۴۰۴ | صفحه پیدا نشد</title>
+    <link rel="icon" href="{{ asset('favicon.png') }}">
+    <link rel="stylesheet" href="{{ asset('css/font.css') }}">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700;900&display=swap');
+        :root {
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text: #0f172a;
+            --muted: #64748b;
+            --accent: #6366f1;
+            --accent-soft: #eef2ff;
+            --border: #e2e8f0;
+        }
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #0b1120;
+                --card: #111827;
+                --text: #f1f5f9;
+                --muted: #94a3b8;
+                --accent: #818cf8;
+                --accent-soft: #1e1b4b;
+                --border: #1f2937;
+            }
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
-            font-family: 'Vazirmatn', sans-serif;
-            overflow: hidden;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Vaz', Tahoma, 'Segoe UI', sans-serif;
         }
-        .glitch {
-            font-size: 8rem;
-            font-weight: 900;
-            position: relative;
-            color: #fff;
-            text-shadow:
-                0.05em 0 0 rgba(255, 0, 0, 0.75),
-                -0.025em -0.05em 0 rgba(0, 255, 0, 0.75),
-                0.025em 0.05em 0 rgba(0, 0, 255, 0.75);
-            animation: glitch 500ms infinite;
+        .card {
+            width: 100%;
+            max-width: 28rem;
+            padding: 2.5rem 2rem;
+            text-align: center;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 1.25rem;
+            box-shadow: 0 10px 30px rgba(15, 23, 42, .08);
         }
-        .glitch span { display: block; position: absolute; top: 0; left: 0; right: 0; bottom: 0; }
-        .glitch span:before, .glitch span:after {
-            content: "404";
-            position: absolute;
-            left: 0;
-            background: #1a1a2e;
-            overflow: hidden;
+        .code {
+            font-size: 6rem;
+            font-weight: 800;
+            line-height: 1;
+            letter-spacing: .05em;
+            color: var(--accent);
+            direction: ltr;
         }
-        .glitch span:before {
-            left: 2px;
-            text-shadow: -2px 0 #ff00c1;
-            animation: glitch-anim-1 2s infinite linear alternate-reverse;
+        h1 { margin-top: 1rem; font-size: 1.35rem; font-weight: 700; }
+        p { margin-top: .75rem; font-size: .95rem; line-height: 1.9; color: var(--muted); }
+        .actions { display: flex; gap: .75rem; justify-content: center; flex-wrap: wrap; margin-top: 2rem; }
+        .btn {
+            padding: .7rem 1.4rem;
+            font: inherit;
+            font-size: .9rem;
+            font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+            border-radius: .75rem;
+            border: 1px solid transparent;
+            transition: opacity .15s ease;
         }
-        .glitch span:after {
-            left: -2px;
-            text-shadow: -2px 0 #00fff9, 2px 2px #ff00c1;
-            animation: glitch-anim-2 3s infinite linear alternate-reverse;
-        }
-        @keyframes glitch { 0%, 100% { transform: translate(0); } 20% { transform: translate(-5px, 5px); } 40% { transform: translate(-5px, -5px); } 60% { transform: translate(5px, 5px); } 80% { transform: translate(5px, -5px); } }
-        @keyframes glitch-anim-1 { 0% { clip-path: inset(40% 0 40% 0); } 100% { clip-path: inset(20% 0 50% 0); } }
-        @keyframes glitch-anim-2 { 0% { clip-path: inset(15% 0 60% 0); } 100% { clip-path: inset(55% 0 20% 0); } }
+        .btn:hover { opacity: .85; }
+        .btn-primary { background: var(--accent); color: #fff; }
+        .btn-ghost { background: var(--accent-soft); color: var(--accent); }
     </style>
 </head>
-<body class="bg-[#1a1a2e] text-white flex items-center justify-center min-h-screen">
-<div class="text-center">
-    <div class="glitch" data-text="404">
-        404
-        <span></span>
-    </div>
-    <h1 class="text-2xl md:text-3xl font-bold mt-8 text-gray-300">اتصال با این صفحه برقرار نشد!</h1>
-    <p class="mt-4 text-gray-400">به نظر می‌رسد در فضای بیکران دیجیتال گم شده‌اید. آدرسی که به دنبال آن بودید، وجود ندارد.</p>
-    <div class="mt-10">
-        <a href="{{ route('home') }}" class="px-8 py-3 bg-indigo-600 text-white font-semibold rounded-lg shadow-lg hover:bg-indigo-700 transition-transform transform hover:scale-105 duration-300">
-            بازگشت به پایگاه اصلی
-        </a>
-    </div>
-</div>
+<body>
+    <main class="card">
+        <div class="code">404</div>
+        <h1>صفحه مورد نظر پیدا نشد</h1>
+        <p>آدرسی که وارد کرده‌اید وجود ندارد یا منتقل شده است. لطفاً آدرس را بررسی کنید یا به صفحه اصلی برگردید.</p>
+        <div class="actions">
+            <a class="btn btn-primary" href="{{ url('/') }}">صفحه اصلی</a>
+            <button class="btn btn-ghost" type="button" onclick="history.length > 1 ? history.back() : (location.href = '{{ url('/') }}')">بازگشت</button>
+        </div>
+    </main>
 </body>
 </html>

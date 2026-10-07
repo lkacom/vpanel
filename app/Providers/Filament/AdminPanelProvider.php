@@ -35,6 +35,10 @@ class AdminPanelProvider extends PanelProvider
             ->path('admin')
             ->login()
             ->darkMode()
+            ->renderHook(
+                \Filament\View\PanelsRenderHook::HEAD_END,
+                fn (): string => view('partials.session-expired-redirect')->render()
+            )
             ->topNavigation()
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->brandLogo('/images/logo.png')
