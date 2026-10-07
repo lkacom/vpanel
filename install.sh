@@ -86,6 +86,18 @@ is_valid_domain() {
     [[ "$domain" =~ ^([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,63}$ ]]
 }
 
+# Latest release tag by semantic version. Tags may be named "1.0.8" or "v1.0.8" (or a mix of both):
+# a plain `sort --version` ranks every "v..." tag above every number-only tag, so an old "v1.0.2"
+# would win over "1.0.8". We strip the optional "v" only for comparing and print the real tag name.
+latest_release_tag() {
+    git tag --list \
+        | grep -E '^v?[0-9]+(\.[0-9]+)*$' \
+        | awk '{v=$0; sub(/^v/, "", v); print v "\t" $0}' \
+        | sort -t"$(printf '\t')" -k1,1V \
+        | tail -n 1 \
+        | cut -f2
+}
+
 # Request an SSL certificate with automatic retries, since DNS/firewall
 # propagation right after install may not be instantly ready.
 request_ssl_certificate() {
@@ -192,7 +204,7 @@ install_vpanel() {
 
     # Fetch all tags and checkout the latest release tag
     sudo git fetch --tags origin
-    LATEST_TAG=$(git tag --sort=-version:refname | head -n 1)
+    LATEST_TAG=$(latest_release_tag)
     if [ -n "$LATEST_TAG" ]; then
         step "📌 Checking out latest release: ${LATEST_TAG}"
         sudo git checkout "$LATEST_TAG"
@@ -380,7 +392,7 @@ update_vpanel() {
     # --- Fetch latest release tag from GitHub API ---
     step "Fetching latest release information from GitHub..."
     sudo git fetch --tags --force origin
-    LATEST_VERSION=$(git tag --sort=-version:refname | head -n 1)
+    LATEST_VERSION=$(latest_release_tag)
 
     if [ -z "$LATEST_VERSION" ]; then
         error "Error: No release tags found in the repository. Cannot determine the latest version."
@@ -426,7 +438,10 @@ update_vpanel() {
 
     # --- Step 2: Checkout latest release tag from GitHub ---
     step "Step 2/9: Checking out release ${LATEST_VERSION} from GitHub..."
-    sudo git checkout "$LATEST_VERSION"
+    # Servers get tracked-file noise (chmod mode changes, composer/npm rewriting lock files).
+    # Ignore file modes and force the checkout so a dirty tree can never block an update.
+    sudo git config core.fileMode false
+    sudo git checkout --force "$LATEST_VERSION"
     echo "{\"version\": \"${LATEST_VERSION}\"}" | sudo tee "${PROJECT_PATH}/version.json" > /dev/null
 
     # Guarantee .env survives the checkout no matter what (protects APP_KEY, DB creds, SSL email)
@@ -471,6 +486,8 @@ update_vpanel() {
     sudo -u ${WEB_USER} php artisan storage:link --force || true
     sudo -u ${WEB_USER} mkdir -p storage/app/public/receipts storage/app/public/logos public/uploads/logos
     sudo chmod -R 775 storage/app/public public/uploads
+    # Reload PHP-FPM so OPcache can never keep serving stale PHP / compiled Blade views after an update
+    sudo systemctl reload php${PHP_VERSION}-fpm || true
     sudo -u ${WEB_USER} php artisan up
 
     # --- Step 8: Re-check / retry SSL for the domain used at install time ---
