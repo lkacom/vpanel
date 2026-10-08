@@ -34,7 +34,7 @@ class ThemeSettings extends Page implements HasForms
     {
         $settings = Setting::all()->pluck('value', 'key')->toArray();
 
-        $settings['main_theme_enabled'] = ($settings['active_theme'] ?? 'rocket') === 'rocket';
+        $settings['main_theme_enabled'] = ($settings['active_theme'] ?? 'welcome') === 'rocket';
 
         // FileUpload با disk=public و directory=logos کار می‌کند
         // مقدار ذخیره‌شده در DB: "logos/filename.png"
@@ -46,7 +46,7 @@ class ThemeSettings extends Page implements HasForms
         $settings['login_logo'] = $storedLogo ? [$storedLogo] : [];
 
         $this->form->fill(array_merge([
-            'main_theme_enabled' => true,
+            'main_theme_enabled' => false,
             'login_logo'         => [],
         ], $settings));
     }
