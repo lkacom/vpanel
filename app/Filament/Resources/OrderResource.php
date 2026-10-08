@@ -121,8 +121,8 @@ class OrderResource extends Resource
     public static function statusLabel(string $state): string
     {
         return match ($state) {
-            'active'   => 'موفق',
-            'inactive' => 'نا موفق',
+            'active'   => 'فعال',
+            'inactive' => 'غیرفعال',
             'pending'  => 'در انتظار تایید',
             default    => 'خطا',
         };
