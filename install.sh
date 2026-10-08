@@ -98,6 +98,14 @@ latest_release_tag() {
         | cut -f2
 }
 
+# Run apt-get fully non-interactive: no debconf dialogs, no needrestart "press Enter" screens and no
+# config-file questions. stdin is closed so nothing can ever sit waiting for a key press.
+# (`sudo env ...` is used because plain `sudo` resets DEBIAN_FRONTEND / NEEDRESTART_MODE.)
+apt_quiet() {
+    sudo env DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a NEEDRESTART_SUSPEND=1 \
+        apt-get -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" "$@" </dev/null
+}
+
 # Request an SSL certificate with automatic retries, since DNS/firewall
 # propagation right after install may not be instantly ready.
 request_ssl_certificate() {
@@ -109,7 +117,7 @@ request_ssl_certificate() {
 
     while [ $i -le $attempts ]; do
         step "🔒 Requesting SSL certificate for $domain (attempt $i/$attempts)..."
-        if sudo certbot --nginx -d "$domain" --non-interactive --agree-tos -m "$email"; then
+        if sudo certbot --nginx -d "$domain" --non-interactive --agree-tos --no-eff-email -m "$email"; then
             return 0
         fi
         if [ $i -lt $attempts ]; then
@@ -151,25 +159,25 @@ install_vpanel() {
 
     # --- Remove old PHP versions ---
     step "🧹 Removing old PHP versions..."
-    sudo apt-get remove -y php* || true
-    sudo apt autoremove -y
+    apt_quiet remove 'php*' || true
+    apt_quiet autoremove
 
     # --- Prerequisites ---
     step "📦 Installing required packages..."
     export DEBIAN_FRONTEND=noninteractive
-    sudo apt-get update -y
-    sudo apt-get install -y git curl unzip software-properties-common gpg nginx mysql-server redis-server supervisor ufw certbot python3-certbot-nginx
+    apt_quiet update
+    apt_quiet install git curl unzip software-properties-common gpg nginx mysql-server redis-server supervisor ufw certbot python3-certbot-nginx
 
     # --- Install Node.js LTS ---
     step "📦 Installing Node.js..."
-    curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
-    sudo apt-get install -y nodejs build-essential
+    curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E env DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a bash -
+    apt_quiet install nodejs build-essential
 
     # --- Install PHP 8.3 ---
     step "☕ Installing PHP ${PHP_VERSION}..."
-    sudo add-apt-repository -y ppa:ondrej/php
-    sudo apt-get update -y
-    sudo apt-get install -y \
+    sudo add-apt-repository -y ppa:ondrej/php </dev/null
+    apt_quiet update
+    apt_quiet install \
         php${PHP_VERSION} php${PHP_VERSION}-fpm php${PHP_VERSION}-cli \
         php${PHP_VERSION}-mysql php${PHP_VERSION}-mbstring php${PHP_VERSION}-xml \
         php${PHP_VERSION}-curl php${PHP_VERSION}-zip php${PHP_VERSION}-bcmath \
@@ -183,7 +191,7 @@ install_vpanel() {
     success "PHP upload limit increased to 10MB."
 
     # --- Composer ---
-    sudo apt-get remove -y composer || true
+    apt_quiet remove composer || true
     php${PHP_VERSION} -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
     php${PHP_VERSION} composer-setup.php --install-dir=/usr/local/bin --filename=composer
     rm composer-setup.php
@@ -238,8 +246,8 @@ install_vpanel() {
     # Prepare a writable HOME/cache dir for www-data so Composer's cache works correctly
     sudo mkdir -p /var/www/.cache
     sudo chown -R ${WEB_USER}:${WEB_USER} /var/www/.cache
-    sudo -u ${WEB_USER} HOME=/var/www composer install --no-dev --optimize-autoloader
-    sudo -u ${WEB_USER} HOME=/var/www composer require morilog/jalali
+    sudo -u ${WEB_USER} HOME=/var/www composer install --no-dev --optimize-autoloader --no-interaction
+    sudo -u ${WEB_USER} HOME=/var/www composer require morilog/jalali --no-interaction
 
     step "📦 Installing Node.js packages..."
     sudo -u ${WEB_USER} rm -rf node_modules package-lock.json
